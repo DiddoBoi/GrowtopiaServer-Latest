@@ -4,4 +4,4 @@
 - Fixed Registration issue
 - Re-designed /find command UI
 
-Credit : Tianvan, GuckTubeYT, LyteVV
+Credit : GrowtopiaNoobs, Tianvan, GuckTubeYT, LyteVV
