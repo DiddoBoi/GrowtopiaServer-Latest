@@ -27,3 +27,9 @@ For latest cdncontent and onsupermain proto, you can get from guckproject
 
 GuckProject Link :
 https://bit.ly/guckproject
+
+- Updates :
+- Added news.txt
+- Updated news to halloween event
+- Simple RGT Store (Not Full)
+- Weathers (Not all working)
