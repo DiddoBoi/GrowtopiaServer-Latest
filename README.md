@@ -33,3 +33,4 @@ https://bit.ly/guckproject
 - Updated news to halloween event
 - Simple RGT Store (Not Full)
 - Weathers (Not all working)
+- Added Epoch Machine
