@@ -34,3 +34,4 @@ https://bit.ly/guckproject
 - Simple RGT Store (Not Full)
 - Weathers (Not all working)
 - Added Epoch Machine
+- A few change to lock settings (not support yet)
