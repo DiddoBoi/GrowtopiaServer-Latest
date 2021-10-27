@@ -1,0 +1,103 @@
+﻿  stdafx.cpp
+  enet server test.cpp
+C:\Users\Vincent\Downloads\GTVY\enet server test\crypt_blowfish\crypt_blowfish.cpp(899,18): warning C4244: '=': conversion from 'unsigned long' to 'char', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\bcrypt.cpp(118,6): warning C4101: 'fd': unreferenced local variable
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(254,21): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(512,20): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(766,20): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(784,20): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(789,14): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(793,12): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(834,22): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(1013,20): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(1104,20): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(1113,20): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(1123,22): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(1139,20): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(1178,14): warning C4101: 'e': unreferenced local variable
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(1291,9): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(1313,32): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(1384,11): warning C4244: 'initializing': conversion from 'std::streamoff' to 'int', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(1409,19): warning C4244: '=': conversion from 'std::streamoff' to 'int', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(1717,13): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(1741,20): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(1873,20): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(1891,20): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(1901,20): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2087,124): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2087,82): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2087,41): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2088,123): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2088,82): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2088,41): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2089,123): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2089,82): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2089,41): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2091,41): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2096,125): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2096,83): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2096,42): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2097,124): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2097,83): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2097,42): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2098,124): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2098,83): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2098,42): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2100,42): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2111,122): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2111,80): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2111,39): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2112,121): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2112,80): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2112,39): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2113,121): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2113,80): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2113,39): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2115,39): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2204,12): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2205,12): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2235,12): warning C4018: '>': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2244,12): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2245,12): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2258,69): warning C4018: '>': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2653,22): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2599,14): warning C4101: 'e': unreferenced local variable
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2892,13): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2893,13): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2896,14): warning C4244: 'initializing': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2928,15): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2929,15): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2932,16): warning C4244: 'initializing': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2949,21): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(2955,30): warning C4018: '>=': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(3025,39): warning C4267: 'initializing': conversion from 'size_t' to 'short', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(3088,15): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(3089,15): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(3105,21): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(3180,21): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(3494,16): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(3495,16): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(3519,19): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(3519,16): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(3620,26): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(3716,25): warning C4309: '=': truncation of constant value
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(3729,25): warning C4309: '=': truncation of constant value
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(4251,32): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(4251,22): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(4263,33): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(4263,22): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(4500,25): warning C4309: '=': truncation of constant value
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(4673,22): warning C4309: '=': truncation of constant value
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(4820,52): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(4821,52): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(4829,51): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(4830,51): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(3880,36): warning C4101: 'e': unreferenced local variable
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(4637,16): warning C4101: 'currentPeer': unreferenced local variable
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(4866,19): warning C4101: 'e': unreferenced local variable
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+C:\Users\Vincent\Downloads\GTVY\enet server test\enet server test.cpp(234): warning C4715: 'ch2n': not all control paths return a value
+  All 2077 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  enet server test.vcxproj -> C:\Users\Vincent\Downloads\GTVY\Release\enet server test.exe
