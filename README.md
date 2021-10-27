@@ -1,4 +1,4 @@
-# A few updates :
+# A few changes :
 - Fixed unordered items
 - Fixed growmojis (not added weary and eyes yet)
 - Fixed Registration issue
