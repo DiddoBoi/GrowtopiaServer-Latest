@@ -744,6 +744,7 @@ public:
 	static void showWrong(ENetPeer* peer, string itemFind, string listFull);
 	static void OnTextOverlay(ENetPeer* peer, string text);
 	static void OnSetCurrentWeather(ENetPeer* peer, int weather);
+	static void PlayAudio(ENetPeer* peer, string audioFile, int delayMS);
 	static void OnTalkBubble(ENetPeer* peer, int netID, string message, bool stay) {
 		if (message.length() == 0 || message.length() > 100) return;
 		GamePacket p2;
@@ -980,6 +981,20 @@ namespace packet {
 			ENET_PACKET_FLAG_RELIABLE);
 		enet_peer_send(peer, 0, packet2);
 		delete p2.data;
+	}
+	void PlayAudio(ENetPeer* peer, string audioFile, int delayMS) {
+		string text = "action|play_sfx\nfile|" + audioFile + "\ndelayMS|" + to_string(delayMS) + "\n";
+		BYTE* data = new BYTE[5 + text.length()];
+		BYTE zero = 0;
+		int type = 3;
+		memcpy(data, &type, 4);
+		memcpy(data + 4, text.c_str(), text.length());
+		memcpy(data + 4 + text.length(), &zero, 1);
+		ENetPacket* packet = enet_packet_create(data,
+			5 + text.length(),
+			ENET_PACKET_FLAG_RELIABLE);
+		enet_peer_send(peer, 0, packet);
+		delete[] data;
 	}
 }
 
@@ -2683,7 +2698,9 @@ void loadnews() {
 						if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
 							continue;
 						if (isHere(peer, currentPeer)) {
-							packet::consolemessage(peer, "`3[`w" + world->name + " `ohas been World Locked by `2" + ((PlayerInfo*)(peer->data))->displayName + "`3]");
+							packet::consolemessage(peer, "`5[`w" + world->name + " `ohas been World Locked by " + ((PlayerInfo*)(peer->data))->displayName + "`5]");
+							packet::SendTalkSelf(peer, "`5[`w" + world->name + " `ohas been World Locked by " + ((PlayerInfo*)(peer->data))->displayName + "`5]");
+							packet::PlayAudio(peer, "audio/use_lock.wav", 0);
 						}
 					}
 				}
@@ -3097,7 +3114,7 @@ void loadnews() {
 		}
 		((PlayerInfo*)(peer->data))->currentWorld = worldInfo->name;
 		if (worldInfo->owner != "") {
-			packet::consolemessage(peer, "`#[`0" + worldInfo->name + " `9World Locked by " + worldInfo->owner + "`#]");
+			packet::consolemessage(peer, "`5[`$" + worldInfo->name + " World Locked by " + worldInfo->owner + "`5]");
 		}
 		delete[] data;
 		((PlayerInfo*)(peer->data))->item_uids.clear();
@@ -3280,6 +3297,7 @@ label|Download Latest Version
 #endif
 {
 	cout << "Growtopia private server (c) Ibord, Credit : GrowtopiaNoobs" << endl;
+	system("Color 0A");
 		
 	cout << "Loading config from config.json" << endl;
 	loadConfig();
@@ -3401,6 +3419,7 @@ label|Download Latest Version
 			{
 				//cout << GetTextPointerFromPacket(event.packet) << endl;
 				string cch = GetTextPointerFromPacket(event.packet);
+				if (cch.find("©") != std::string::npos) enet_peer_reset(peer);
 				string str = cch.substr(cch.find("text|") + 5, cch.length() - cch.find("text|") - 1);
 				if (cch.find("action|wrench") == 0) {
 					std::stringstream ss(cch);
@@ -3426,12 +3445,17 @@ label|Download Latest Version
 
 						if (isHere(peer, currentPeer)) {
 							if (((PlayerInfo*)(currentPeer->data))->netID == id) {
-								string name = ((PlayerInfo*)(currentPeer->data))->displayName;
-								packet::dialog(peer, "set_default_color|`o\nadd_label_with_icon|big|" + name + "|left|18|\nadd_spacer|small|\n\nadd_quick_exit|\nend_dialog|player_info||Close|");
+								int levels = static_cast<PlayerInfo*>(peer->data)->level;
+								int xp = static_cast<PlayerInfo*>(peer->data)->xp;
+								string name = ((PlayerInfo*)(peer->data))->displayName;
+								packet::dialog(peer, "set_default_color|`o\n\nadd_player_info|" + name + " | " + std::to_string(levels) + " | " + std::to_string(xp) + " | " + to_string(static_cast<PlayerInfo*>(peer->data)->level * 1500) + "|\nadd_spacer|small|\nadd_button||Close|0|0|\nadd_quick_exit");
 							}
-
+							else {
+								string name = ((PlayerInfo*)(currentPeer->data))->displayName;
+								string ugay = "set_default_color|`o\nadd_label_with_icon|big|`w" + name + " `w(`2" + to_string(((PlayerInfo*)(currentPeer->data))->level) + "`w)``|left|18|\nadd_spacer|small|\n\nadd_quick_exit|\nend_dialog|player_info||Close|";
+								packet::dialog(peer, ugay);
+							}
 						}
-
 					}
 				}
 
@@ -4270,6 +4294,10 @@ label|Download Latest Version
 						}
 					}
 					
+					else if (str == "/sb") {
+					    packet::consolemessage(peer, "Usage : /sb <message>");
+					}
+
 					else if (str.substr(0, 4) == "/sb ") {
 						using namespace std::chrono;
 						if (((PlayerInfo*)(peer->data))->lastSB + 45000 < (duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count())
