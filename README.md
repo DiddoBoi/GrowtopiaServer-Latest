@@ -36,8 +36,8 @@ https://bit.ly/guckproject
 - Added Epoch Machine
 - A few change to lock settings (not support yet)
 - Modified Wrench (BETA)
-- Modified Locking World (Text is shown in talkbubble and modified the color)
-- Modified Exe Color
+- Modified Locking World (Text is shown in talkbubble, Added sound, and modified the text color)
+- Modified Exe Log Color
 - Leveling System (BETA (Not yet added xp per broken block))
 - Fixed © Method
 - Added /sb without space to tell the usage, output : "Usage : /sb message"
