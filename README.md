@@ -40,3 +40,4 @@ https://bit.ly/guckproject
 - Modified Exe Color
 - Leveling System (BETA (Not yet added xp per broken block))
 - Fixed © Method
+- Added /sb without space to tell the usage, output : "Usage : /sb <message>"
