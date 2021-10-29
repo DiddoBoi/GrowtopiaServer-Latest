@@ -35,3 +35,8 @@ https://bit.ly/guckproject
 - Weathers (Not all working)
 - Added Epoch Machine
 - A few change to lock settings (not support yet)
+- Modified Wrench (BETA)
+- Modified Locking World (Text is shown in talkbubble and modified the color)
+- Modified Exe Color
+- Leveling System (BETA (Not yet added xp per broken block))
+- Fixed © Method
