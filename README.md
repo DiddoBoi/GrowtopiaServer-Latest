@@ -41,3 +41,5 @@ https://bit.ly/guckproject
 - Leveling System (BETA (Not yet added xp per broken block))
 - Fixed © Method
 - Added /sb without space to tell the usage, output : "Usage : /sb message"
+- Updated items to latest
+
