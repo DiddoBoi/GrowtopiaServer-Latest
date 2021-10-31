@@ -43,3 +43,5 @@ https://bit.ly/guckproject
 - Added /sb without space to tell the usage, output : "Usage : /sb message"
 - Updated items to latest
 - Added Simple Friend System
+- Updated items again to latest
+- Updated news.txt to latest
