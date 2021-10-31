@@ -105,7 +105,7 @@ ulong _byteswap_ulong(ulong x)
 
 //configs
 int configPort = 17091;
-string configCDN = "0098/17367/cache/"; 
+string configCDN = "0098/02096/cache/"; 
 
 
 /***bcrypt***/
@@ -567,6 +567,9 @@ struct PlayerInfo {
 	int level = 1;
 	int xp = 0;
 	bool haveGrowId = false;
+	int characterState = 0;
+	vector<string>friendinfo;
+	vector<string>createfriendtable;
 	string tankIDName = "";
 	string tankIDPass = "";
 	string requestedName = "";
@@ -578,6 +581,7 @@ struct PlayerInfo {
 	bool radio = true;
 	int x;
 	int y;
+	string lastfriend = "";
 	int x1;
 	int y1;
 	bool isRotatedLeft = false;
@@ -2794,6 +2798,11 @@ void loadnews() {
 		}
 		return count; 
 	} 
+
+	inline void sendWrongCmdLog(ENetPeer* peer)
+	{
+		packet::consolemessage(peer, "`4Unknown command. `oEnter `$/help `ofor a list of valid commands.");
+	}
   
 	void removeExtraSpaces(string &str) 
 	{
@@ -3459,6 +3468,11 @@ label|Download Latest Version
 					}
 				}
 
+				if (cch.find("action|friends\n") == 0) {
+					string gayfriend = "set_default_color|`w\n\nadd_label_with_icon|big|Social Portal``|left|1366|\n\nadd_spacer|small|\nadd_button|backonlinelist|Show Friends``|0|0|\nadd_button|createguildinfo|Create Guild``|0|0|\nend_dialog||OK||\nadd_quick_exit|";
+					packet::dialog(peer, gayfriend);
+				}
+
 				if (cch.find("action|setSkin") == 0) {
 					if (!world) continue;
 					std::stringstream ss(cch);
@@ -3752,9 +3766,9 @@ label|Download Latest Version
 							item.itemID = Id;
 							item.itemCount = 200;
 							((PlayerInfo*)(peer->data))->inventory.items.push_back(item);
-					}
+						}
 						sendInventory(peer, ((PlayerInfo*)(peer->data))->inventory);
-				}
+					}
 
 					else if (isFindDialog) {
 						string itemLower2;
@@ -3808,114 +3822,199 @@ label|Download Latest Version
 					}
 				SKIPFind:;
 
-				if (isEpoch) {
-					PlayerInfo* pinfo = ((PlayerInfo*)(peer->data));
-					int x = pinfo->wrenchedBlockLocation % world->width;
-					int y = pinfo->wrenchedBlockLocation / world->width;
-					if (land == true) {
-						world->weather = 40;
-						ENetPeer* currentPeer;
-
-						for (currentPeer = server->peers;
-							currentPeer < &server->peers[server->peerCount];
-							++currentPeer)
-						{
-							if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
-								continue;
-							if (isHere(peer, currentPeer))
-							{
-								GamePacket p2 = packetEnd(appendInt(appendString(createPacket(), "OnSetCurrentWeather"), world->weather));
-								ENetPacket* packet2 = enet_packet_create(p2.data,
-									p2.len,
-									ENET_PACKET_FLAG_RELIABLE);
-
-								enet_peer_send(currentPeer, 0, packet2);
-								delete p2.data;
-								continue;
-							}
+					if (captcha) {
+						int x;
+						try {
+							x = stoi(captchaanswer);
 						}
-
-					}
-					else {
-						world->land = false;
-					}
-					if (volcano == true) {
-						world->weather = 39;
-						ENetPeer* currentPeer;
-
-						for (currentPeer = server->peers;
-							currentPeer < &server->peers[server->peerCount];
-							++currentPeer)
-						{
-							if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
-								continue;
-							if (isHere(peer, currentPeer))
-							{
-								GamePacket p2 = packetEnd(appendInt(appendString(createPacket(), "OnSetCurrentWeather"), world->weather));
-								ENetPacket* packet2 = enet_packet_create(p2.data,
-									p2.len,
-									ENET_PACKET_FLAG_RELIABLE);
-
-								enet_peer_send(currentPeer, 0, packet2);
-								delete p2.data;
-								continue;
-							}
+						catch (std::invalid_argument& e) {
+							continue;
 						}
-
-					}
-					else {
-						world->volcano = false;
-					}
-					if (ice == true) {
-						world->weather = 38;
-						ENetPeer* currentPeer;
-
-						for (currentPeer = server->peers;
-							currentPeer < &server->peers[server->peerCount];
-							++currentPeer)
-						{
-							if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
-								continue;
-							if (isHere(peer, currentPeer))
-							{
-								GamePacket p2 = packetEnd(appendInt(appendString(createPacket(), "OnSetCurrentWeather"), world->weather));
-								ENetPacket* packet2 = enet_packet_create(p2.data,
-									p2.len,
-									ENET_PACKET_FLAG_RELIABLE);
-
-								enet_peer_send(currentPeer, 0, packet2);
-								delete p2.data;
-								continue;
-							}
+						string youareanalien = captchaanswer;
+						if (x > hasil || x != hasil || captchaanswer.length() < 0 || captchaanswer == "") {
+							packet::dialog(peer, "set_default_color|`o\nadd_label_with_icon|big|`wAre you Human?``|left|206|\nadd_spacer|small|\nadd_textbox|What will be the sum of the following numbers|left|\nadd_textbox|" + to_string(resultnbr1) + " + " + to_string(resultnbr2) + "|left|\nadd_text_input|captcha_answer|Answer:||32|\nadd_button|Captcha_|Submit|");
+							break;
 						}
-
+						else {
+							continue;
+						}
 					}
-					else {
-						world->ice = false;
-					}
-
-				}
-
-				if (captcha) {
-					int x;
-					try {
-						x = stoi(captchaanswer);
-					}
-					catch (std::invalid_argument& e) {
-						continue;
-					}
-					string youareanalien = captchaanswer;
-					if (x > hasil || x != hasil || captchaanswer.length() < 0 || captchaanswer == "") {
-						packet::dialog(peer, "set_default_color|`o\nadd_label_with_icon|big|`wAre you Human?``|left|206|\nadd_spacer|small|\nadd_textbox|What will be the sum of the following numbers|left|\nadd_textbox|" + to_string(resultnbr1) + " + " + to_string(resultnbr2) + "|left|\nadd_text_input|captcha_answer|Answer:||32|\nadd_button|Captcha_|Submit|");
-						break;
-					}
-					else {
-						continue;
-					}
-				}
 
 					if (btn == "worldPublic") if (((PlayerInfo*)(peer->data))->rawName == getPlyersWorld(peer)->owner) getPlyersWorld(peer)->isPublic = true;
-					if(btn == "worldPrivate") if (((PlayerInfo*)(peer->data))->rawName == getPlyersWorld(peer)->owner) getPlyersWorld(peer)->isPublic = false;
+					if (btn == "worldPrivate") if (((PlayerInfo*)(peer->data))->rawName == getPlyersWorld(peer)->owner) getPlyersWorld(peer)->isPublic = false;
+					if (btn == "backsocialportal") {
+						string kamugay = "set_default_color|`w\n\nadd_label_with_icon|big|Social Portal``|left|1366|\n\nadd_spacer|small|\nadd_button|backonlinelist|Show Friends``|0|0|\nend_dialog||OK||\nadd_quick_exit|";
+						packet::dialog(peer, kamugay);
+					}
+					if (btn == "frnoption") {
+						string checkboxshit = "add_checkbox|checkbox_public|Show location to friends|1";
+						string checkboxshits = "add_checkbox|checkbox_notifications|Show friend notifications|1";;
+						string req = "set_default_color|`o\n\nadd_label_with_icon|big|`wFriend Options``|left|1366|\n\nadd_spacer|small|\n" + checkboxshit + "\n" + checkboxshits + "\nadd_button||`oClose``|0|0|\nadd_quick_exit|";
+						packet::dialog(peer, req);
+					}
+					if (btn == "backonlinelist") {
+
+						string onlinefrnlist = "";
+						int onlinecount = 0;
+						int totalcount = ((PlayerInfo*)(peer->data))->friendinfo.size();
+						ENetPeer* currentPeer;
+
+						for (currentPeer = server->peers;
+							currentPeer < &server->peers[server->peerCount];
+							++currentPeer)
+						{
+							if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
+								continue;
+
+							string name = ((PlayerInfo*)(currentPeer->data))->rawName;
+							if (find(((PlayerInfo*)(peer->data))->friendinfo.begin(), ((PlayerInfo*)(peer->data))->friendinfo.end(), name) != ((PlayerInfo*)(peer->data))->friendinfo.end()) {
+								onlinefrnlist += "\nadd_button|onlinefrns_" + ((PlayerInfo*)(currentPeer->data))->rawName + "|`2ONLINE: `o" + ((PlayerInfo*)(currentPeer->data))->displayName + "``|0|0|";
+								onlinecount++;
+
+							}
+
+						}
+						if (totalcount == 0) {
+							string singsing = "set_default_color|`o\n\nadd_label_with_icon|big|`o" + std::to_string(onlinecount) + " of " + std::to_string(totalcount) + " `wFriends Online``|left|1366|\n\nadd_spacer|small|\nadd_label|small|`oYou currently have no friends.  That's just sad.  To make some, click a person's wrench icon, then choose `5Add as friend`o.``|left|4|\n\nadd_spacer|small|\nadd_button|frnoption|`oFriend Options``|0|0|\nadd_button|backsocialportal|Back|0|0|\nadd_button||`oClose``|0|0|\nadd_quick_exit|";
+							packet::dialog(peer, singsing);
+						}
+						else if (onlinecount == 0) {
+							string kamusimp = "set_default_color|`o\n\nadd_label_with_icon|big|`o" + std::to_string(onlinecount) + " of " + std::to_string(totalcount) + " `wFriends Online``|left|1366|\n\nadd_spacer|small|\nadd_button|chc0|`wClose``|0|0|\nadd_label|small|`oNone of your friends are currently online.``|left|4|\n\nadd_spacer|small|\nadd_button|showoffline|`oShow offline``|0|0|\nadd_button|frnoption|`oFriend Options``|0|0|\nadd_button|backsocialportal|Back|0|0|\nadd_button||`oClose``|0|0|\nadd_quick_exit|";
+							packet::dialog(peer, kamusimp);
+						}
+
+						else {
+							string ngl = "set_default_color|`o\n\nadd_label_with_icon|big|`o" + std::to_string(onlinecount) + " of " + std::to_string(totalcount) + " `wFriends Online``|left|1366|\n\nadd_spacer|small|\nadd_button|chc0|`wClose``|0|0|" + onlinefrnlist + "\n\nadd_spacer|small|\nadd_button|showoffline|`oShow offline``|0|0|\nadd_button|frnoption|`oFriend Options``|0|0|\nadd_button|backsocialportal|Back|0|0|\nadd_button||`oClose``|0|0|\nadd_quick_exit|";
+							packet::dialog(peer, ngl);
+						}
+					}
+					if (btn == "showoffline") {
+						string onlinelist = "";
+						string offlinelist = "";
+						string offname = "";
+						int onlinecount = 0;
+						int totalcount = ((PlayerInfo*)(peer->data))->friendinfo.size();
+						vector<string>offliness = ((PlayerInfo*)(peer->data))->friendinfo;
+
+						ENetPeer* currentPeer;
+
+						for (currentPeer = server->peers;
+							currentPeer < &server->peers[server->peerCount];
+							++currentPeer)
+						{
+							if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
+								continue;
+							string name = ((PlayerInfo*)(currentPeer->data))->rawName;
+
+							if (find(((PlayerInfo*)(peer->data))->friendinfo.begin(), ((PlayerInfo*)(peer->data))->friendinfo.end(), name) != ((PlayerInfo*)(peer->data))->friendinfo.end()) {
+								onlinelist += "\nadd_button|onlinefrns_" + ((PlayerInfo*)(currentPeer->data))->rawName + "|`2ONLINE: `o" + ((PlayerInfo*)(currentPeer->data))->displayName + "``|0|0|";
+								onlinecount++;
+
+								offliness.erase(std::remove(offliness.begin(), offliness.end(), name), offliness.end());
+							}
+						}
+						for (std::vector<string>::const_iterator i = offliness.begin(); i != offliness.end(); ++i) {
+							offname = *i;
+							offlinelist += "\nadd_button|offlinefrns_" + offname + "|`4OFFLINE: `o" + offname + "``|0|0|";
+
+						}
+
+						/*if (onlinecount > 0) {
+							string ureallygay = "set_default_color|`o\n\nadd_label_with_icon|big|`o" + std::to_string(onlinecount) + " of " + std::to_string(totalcount) + " `wFriends Online|left|1366|\n\nadd_spacer|small|\nadd_button|chc0|`wClose``|0|0|\n\nadd_spacer|small|\nadd_textbox|All of your friend are online!|\n\nadd_spacer|small| \n\nadd_spacer|small| \nadd_button|frnoption|`oFriend Options``|0|0|\nadd_button|backonlinelist|Back``|0|0|\nadd_button||`oClose``|0|0|\nadd_quick_exit|";
+							packet::dialog(peer, ureallygay);
+						}
+						else {*/
+						string gaying = "set_default_color|`o\n\nadd_label_with_icon|big|`o" + std::to_string(onlinecount) + " of " + std::to_string(totalcount) + " `wFriends Online|left|1366|\n\nadd_spacer|small|\nadd_button|chc0|`wClose``|0|0|\nadd_spacer|small|" + offlinelist + "\nadd_spacer|small|\n\nadd_button|frnoption|`oFriend Options``|0|0|\nadd_button|backonlinelist|Back``|0|0|\nadd_button||`oClose``|0|0|\nadd_quick_exit|";
+						packet::dialog(peer, gaying);
+					}
+
+					if (isEpoch) {
+						PlayerInfo* pinfo = ((PlayerInfo*)(peer->data));
+						int x = pinfo->wrenchedBlockLocation % world->width;
+						int y = pinfo->wrenchedBlockLocation / world->width;
+						if (land == true) {
+							world->weather = 40;
+							ENetPeer* currentPeer;
+
+							for (currentPeer = server->peers;
+								currentPeer < &server->peers[server->peerCount];
+								++currentPeer)
+							{
+								if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
+									continue;
+								if (isHere(peer, currentPeer))
+								{
+									GamePacket p2 = packetEnd(appendInt(appendString(createPacket(), "OnSetCurrentWeather"), world->weather));
+									ENetPacket* packet2 = enet_packet_create(p2.data,
+										p2.len,
+										ENET_PACKET_FLAG_RELIABLE);
+
+									enet_peer_send(currentPeer, 0, packet2);
+									delete p2.data;
+									continue;
+								}
+							}
+
+						}
+						else {
+							world->land = false;
+						}
+						if (volcano == true) {
+							world->weather = 39;
+							ENetPeer* currentPeer;
+
+							for (currentPeer = server->peers;
+								currentPeer < &server->peers[server->peerCount];
+								++currentPeer)
+							{
+								if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
+									continue;
+								if (isHere(peer, currentPeer))
+								{
+									GamePacket p2 = packetEnd(appendInt(appendString(createPacket(), "OnSetCurrentWeather"), world->weather));
+									ENetPacket* packet2 = enet_packet_create(p2.data,
+										p2.len,
+										ENET_PACKET_FLAG_RELIABLE);
+
+									enet_peer_send(currentPeer, 0, packet2);
+									delete p2.data;
+									continue;
+								}
+							}
+
+						}
+						else {
+							world->volcano = false;
+						}
+						if (ice == true) {
+							world->weather = 38;
+							ENetPeer* currentPeer;
+
+							for (currentPeer = server->peers;
+								currentPeer < &server->peers[server->peerCount];
+								++currentPeer)
+							{
+								if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
+									continue;
+								if (isHere(peer, currentPeer))
+								{
+									GamePacket p2 = packetEnd(appendInt(appendString(createPacket(), "OnSetCurrentWeather"), world->weather));
+									ENetPacket* packet2 = enet_packet_create(p2.data,
+										p2.len,
+										ENET_PACKET_FLAG_RELIABLE);
+
+									enet_peer_send(currentPeer, 0, packet2);
+									delete p2.data;
+									continue;
+								}
+							}
+
+						}
+						else {
+							world->ice = false;
+						}
+
+					}
 #ifdef REGISTRATION
 					if (isRegisterDialog) {
 
@@ -4281,7 +4380,6 @@ label|Download Latest Version
 						}
 						else {
 							packet::consolemessage(peer, "`oYour body stops shimmering and returns to normal. (Ghost in the shell mod removed)");
-
 							gamepacket_t p(0, ((PlayerInfo*)(peer->data))->netID);
 							p.Insert("OnSetPos");
 							p.Insert(pData->x1, pData->y1);
