@@ -42,4 +42,4 @@ https://bit.ly/guckproject
 - Fixed © Method
 - Added /sb without space to tell the usage, output : "Usage : /sb message"
 - Updated items to latest
-
+- Added Simple Friend System
