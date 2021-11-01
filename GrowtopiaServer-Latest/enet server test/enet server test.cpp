@@ -105,7 +105,7 @@ ulong _byteswap_ulong(ulong x)
 
 //configs
 int configPort = 17091;
-string configCDN = "0098/02096/cache/"; 
+string configCDN = "0098/84493/cache/"; 
 
 
 /***bcrypt***/
@@ -578,6 +578,31 @@ struct PlayerInfo {
 	string country = "";
 	int adminLevel = 0;
 	string currentWorld = "START";
+	string lastInfoname = "";
+	string lastgm = "";
+	short currentInventorySize = 0;
+	string lastgmname = "";
+	string lastgmworld = "";
+	string guildlast = "";
+	bool isinvited = false;
+	int guildBg = 0;
+	int guildFg = 0;
+	int petlevel = 0;
+	//GUILD SYSTEM
+	string guildStatement = "";
+	string guildLeader = "";
+	vector <string> guildmatelist;
+	vector<string>guildMembers;
+	int guildlevel = 0;
+	int guildexp = 0;
+	string createGuildName = "";
+	string createGuildStatement = "";
+	string createGuildFlagBg = "";
+	string createGuildFlagFg = "";
+
+	string guild = "";
+
+	bool joinguild = false;
 	bool radio = true;
 	int x;
 	int y;
@@ -700,6 +725,7 @@ struct WorldInfo {
 	WorldItem* items;
 	string owner = "";
 	bool isPublic=false;
+	vector<string> acclist;
 	int weather = 0;
 	bool ice = false;
 	bool land = false;
@@ -749,6 +775,8 @@ public:
 	static void OnTextOverlay(ENetPeer* peer, string text);
 	static void OnSetCurrentWeather(ENetPeer* peer, int weather);
 	static void PlayAudio(ENetPeer* peer, string audioFile, int delayMS);
+	static void OnTalkBubble(ENetPeer* peer, int netID, string text, int chatColor, bool isOverlay);
+	static int guildRegister(ENetPeer* peer, string guildName, string guildStatement, string guildFlagfg, string guildFlagbg);
 	static void OnTalkBubble(ENetPeer* peer, int netID, string message, bool stay) {
 		if (message.length() == 0 || message.length() > 100) return;
 		GamePacket p2;
@@ -888,6 +916,86 @@ int PlayerDB::playerLogin(ENetPeer* peer, string username, string password) {
 	}
 }
 
+int PlayerDB::guildRegister(ENetPeer* peer, string guildName, string guildStatement, string guildFlagfg, string guildFlagbg) {
+	if (guildName.find(" ") != string::npos || guildName.find(".") != string::npos || guildName.find(",") != string::npos || guildName.find("@") != string::npos || guildName.find("[") != string::npos || guildName.find("]") != string::npos || guildName.find("#") != string::npos || guildName.find("<") != string::npos || guildName.find(">") != string::npos || guildName.find(":") != string::npos || guildName.find("{") != string::npos || guildName.find("}") != string::npos || guildName.find("|") != string::npos || guildName.find("+") != string::npos || guildName.find("_") != string::npos || guildName.find("~") != string::npos || guildName.find("-") != string::npos || guildName.find("!") != string::npos || guildName.find("$") != string::npos || guildName.find("%") != string::npos || guildName.find("^") != string::npos || guildName.find("&") != string::npos || guildName.find("`") != string::npos || guildName.find("*") != string::npos || guildName.find("(") != string::npos || guildName.find(")") != string::npos || guildName.find("=") != string::npos || guildName.find("'") != string::npos || guildName.find(";") != string::npos || guildName.find("/") != string::npos) {
+		return -1;
+	}
+
+	if (guildName.length() < 3) {
+		return -2;
+	}
+	if (guildName.length() > 15) {
+		return -3;
+	}
+	int fg;
+	int bg;
+
+	try {
+		fg = stoi(guildFlagfg);
+	}
+	catch (std::invalid_argument& e) {
+		return -6;
+	}
+	try {
+		bg = stoi(guildFlagbg);
+	}
+	catch (std::invalid_argument& e) {
+		return -5;
+	}
+	if (guildFlagbg.length() > 4) {
+		return -7;
+	}
+	if (guildFlagfg.length() > 4) {
+		return -8;
+	}
+
+	string fixedguildName = PlayerDB::getProperName(guildName);
+
+	std::ifstream ifs("guilds/" + fixedguildName + ".json");
+	if (ifs.is_open()) {
+		return -4;
+	}
+
+
+	/*std::ofstream o("guilds/" + fixedguildName + ".json");
+	if (!o.is_open()) {
+		cout << GetLastError() << endl;
+		_getch();
+	}
+
+	json j;
+
+	//  Guild Detail
+	j["GuildName"] = guildName;
+	j["GuildStatement"] = guildStatement;
+	j["GuildWorld"] = ((PlayerInfo*)(peer->data))->currentWorld;
+
+	//  Guild Level
+	j["GuildLevel"] = 0;
+	j["GuildExp"] = 0;
+
+	// Guild Leader
+	j["Leader"] = ((PlayerInfo*)(peer->data))->rawName;
+
+
+	// Guild Flag
+	j["foregroundflag"] = 0;
+	j["backgroundflag"] = 0;
+
+
+	// Role
+	vector<string>guildmember;
+	vector<string>guildelder;
+	vector<string>guildco;
+
+	j["CoLeader"] = guildelder;
+	j["ElderLeader"] = guildco;
+	j["Member"] = guildmem;
+
+	o << j << std::endl; */
+	return 1;
+}
+
 int PlayerDB::playerRegister(string username, string password, string passwordverify, string email, string discord) {
 	string name = username;
 	if (name == "CON" || name == "PRN" || name == "AUX" || name == "NUL" || name == "COM1" || name == "COM2" || name == "COM3" || name == "COM4" || name == "COM5" || name == "COM6" || name == "COM7" || name == "COM8" || name == "COM9" || name == "LPT1" || name == "LPT2" || name == "LPT3" || name == "LPT4" || name == "LPT5" || name == "LPT6" || name == "LPT7" || name == "LPT8" || name == "LPT9") return -1;
@@ -912,6 +1020,10 @@ int PlayerDB::playerRegister(string username, string password, string passwordve
 	j["email"] = email;
 	j["discord"] = discord;
 	j["adminLevel"] = 0;
+	j["level"] = 1;
+	j["xp"] = 0;
+	j["guild"] = "";
+	j["joinguild"] = false;
 	o << j << std::endl;
 	return 1;
 }
@@ -985,6 +1097,30 @@ namespace packet {
 			ENET_PACKET_FLAG_RELIABLE);
 		enet_peer_send(peer, 0, packet2);
 		delete p2.data;
+	}
+	void OnTalkBubble(ENetPeer* peer, int netID, string text, int chatColor, bool isOverlay)
+	{
+		if (isOverlay == true) {
+			GamePacket p = packetEnd(appendIntx(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"),
+				((PlayerInfo*)(peer->data))->netID), text), chatColor), 1));
+
+			ENetPacket* packet = enet_packet_create(p.data,
+				p.len,
+				ENET_PACKET_FLAG_RELIABLE);
+			enet_peer_send(peer, 0, packet);
+			delete p.data;
+		}
+		else
+		{
+			GamePacket p = packetEnd(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"),
+				((PlayerInfo*)(peer->data))->netID), text), chatColor));
+
+			ENetPacket* packet = enet_packet_create(p.data,
+				p.len,
+				ENET_PACKET_FLAG_RELIABLE);
+			enet_peer_send(peer, 0, packet);
+			delete p.data;
+		}
 	}
 	void PlayAudio(ENetPeer* peer, string audioFile, int delayMS) {
 		string text = "action|play_sfx\nfile|" + audioFile + "\ndelayMS|" + to_string(delayMS) + "\n";
@@ -1802,13 +1938,13 @@ string getRankText(string name) {
 	if (lvl == 0) {
 		return "`wPlayer";
 	}
-	if (lvl == 111) {
+	if (lvl == 444) {
 		return "`w[`1VIP`w]";
 	}
-	else if (lvl == 444) {
+	else if (lvl == 666) {
 		return "`#Moderator";
 	}
-	else if (lvl == 666) {
+	else if (lvl == 777) {
 		return "`4Administrator";
 	}
 	else if (lvl == 999) {
@@ -1824,17 +1960,14 @@ string getRankId(string name) {
 	if (lvl == 0) {
 		return "18";
 	}
-	if (lvl == 111) {
+	if (lvl == 444) {
 		return "274";
 	}
-	else if (lvl == 444) {
+	else if (lvl == 666) {
 		return "278";
 	}
-	else if (lvl == 666) {
-		return "276";
-	}
 	else if (lvl == 777) {
-		return "732";
+		return "276";
 	}
 	else if (lvl == 999) {
 		return "1956";
@@ -2203,15 +2336,15 @@ void SendPacketRaw(int a1, void *packetData, size_t packetDataSize, void *a4, EN
 				continue;
 			if (isHere(peer, currentPeer))
 			{
-				gamepacket_t p(2500);
-				p.Insert("OnTalkBubble");
-				p.Insert(((PlayerInfo*)(peer->data))->netID);
-				p.Insert("`w[" + ((PlayerInfo*)(peer->data))->displayName + " `wspun the wheel and got `6" + std::to_string(val) + "`w!]");
-				p.Insert(0);
-				p.CreatePacket(currentPeer);
+					gamepacket_t p(2500);
+					p.Insert("OnTalkBubble");
+					p.Insert(((PlayerInfo*)(peer->data))->netID);
+					p.Insert("`w[" + ((PlayerInfo*)(peer->data))->displayName + " `wspun the wheel and got `4" + std::to_string(val) + "`w!]");
+					p.Insert(0);
+					p.CreatePacket(currentPeer);
+				}
 			}
 		}
-	}
 
 
 	void sendNothingHappened(ENetPeer* peer, int x, int y) {
@@ -2842,44 +2975,59 @@ void loadnews() {
 
 	void sendChatMessage(ENetPeer* peer, int netID, string message)
 	{
-		if (message.length() == 0) return; 
-
-		if (1 > (message.size() - countSpaces(message))) return;
-		removeExtraSpaces(message);
-		message = trimString(message);
-
-		ENetPeer * currentPeer;
+		if (message.length() == 0) return;
+		for (char c : message)
+			if (c < 0x18 || std::all_of(message.begin(), message.end(), isspace)) {
+				return;
+			}
 		string name = "";
-		for (currentPeer = server->peers;
-			currentPeer < &server->peers[server->peerCount];
-			++currentPeer)
-		{
-			if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
-				continue;
+		ENetPeer* currentPeer;
+		for (currentPeer = server->peers; currentPeer < &server->peers[server->peerCount]; ++currentPeer) {
+			if (currentPeer->state != ENET_PEER_STATE_CONNECTED) continue;
 			if (((PlayerInfo*)(currentPeer->data))->netID == netID)
 				name = ((PlayerInfo*)(currentPeer->data))->displayName;
-
 		}
-		gamepacket_t p;
-		p.Insert("OnConsoleMessage");
-		p.Insert("CP:0_PL:4_OID:_CT:[W]_ `o<`w" + name + "`o> " + message);
-		gamepacket_t p2;
-		p2.Insert("OnTalkBubble");
-		p2.Insert(netID);
-		p2.Insert(message);
-		p2.Insert(0);
-		for (currentPeer = server->peers;
-			currentPeer < &server->peers[server->peerCount];
-			++currentPeer)
-		{
-			if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
-				continue;
-			if (isHere(peer, currentPeer))
-			{
-				p.CreatePacket(currentPeer);
-				p2.CreatePacket(currentPeer);
+		GamePacket p;
+		GamePacket p2;
+		if (((PlayerInfo*)(peer->data))->adminLevel == 1337) {
+			p = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"), "CP:_PL:0_OID:_CT:[W]_ `o<`w" + name + "`o> `6" + message));
+			p2 = packetEnd(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"), netID), "`5" + message), 0));
+		}
+		else if (((PlayerInfo*)(peer->data))->adminLevel == 999) {
+			p = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"), "CP:_PL:0_OID:_CT:[W]_ `o<`w" + name + "`o> `e" + message));
+			p2 = packetEnd(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"), netID), "`c" + message), 0));
+		}
+		else if (((PlayerInfo*)(peer->data))->adminLevel == 777) {
+			p = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"), "CP:_PL:0_OID:_CT:[W]_ `o<`w" + name + "`o> `e" + message));
+			p2 = packetEnd(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"), netID), "`2" + message), 0));
+		}
+		else if (((PlayerInfo*)(peer->data))->adminLevel == 666) {
+			p = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"), "CP:_PL:0_OID:_CT:[W]_ `o<`w" + name + "`o> `#" + message));
+			p2 = packetEnd(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"), netID), "`9" + message), 0));
+		}
+		else if (((PlayerInfo*)(peer->data))->adminLevel == 444) {
+			p = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"), "CP:_PL:0_OID:_CT:[W]_ `o<`w" + name + "`o> `1" + message));
+			p2 = packetEnd(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"), netID), "`1" + message), 0));
+		}
+		else {
+			p = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"), "CP:_PL:0_OID:_CT:[W]_ `o<`w" + name + "`o> " + message));
+			p2 = packetEnd(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"), netID), message), 0));
+		}
+		for (currentPeer = server->peers; currentPeer < &server->peers[server->peerCount]; ++currentPeer) {
+			if (currentPeer->state != ENET_PEER_STATE_CONNECTED) continue;
+			if (isHere(peer, currentPeer)) {
+				ENetPacket* packet = enet_packet_create(p.data,
+					p.len,
+					ENET_PACKET_FLAG_RELIABLE);
+				enet_peer_send(currentPeer, 0, packet);
+				ENetPacket* packet2 = enet_packet_create(p2.data,
+					p2.len,
+					ENET_PACKET_FLAG_RELIABLE);
+				enet_peer_send(currentPeer, 0, packet2);
 			}
 		}
+		delete p.data;
+		delete p2.data;
 	}
 
 	void sendWho(ENetPeer* peer)
@@ -3469,8 +3617,14 @@ label|Download Latest Version
 				}
 
 				if (cch.find("action|friends\n") == 0) {
-					string gayfriend = "set_default_color|`w\n\nadd_label_with_icon|big|Social Portal``|left|1366|\n\nadd_spacer|small|\nadd_button|backonlinelist|Show Friends``|0|0|\nadd_button|createguildinfo|Create Guild``|0|0|\nend_dialog||OK||\nadd_quick_exit|";
-					packet::dialog(peer, gayfriend);
+					if (((PlayerInfo*)(peer->data))->joinguild == true) {
+						string properson = "set_default_color|`w\n\nadd_label_with_icon|big|Social Portal``|left|1366|\n\nadd_spacer|small|\nadd_button|backonlinelist|Show Friends``|0|0|\nadd_button|showguild|Show Guild Members``|0|0|\nend_dialog||OK||\nadd_quick_exit|";
+						packet::dialog(peer, properson);
+					}
+					else {
+						string gayfriend = "set_default_color|`w\n\nadd_label_with_icon|big|Social Portal``|left|1366|\n\nadd_spacer|small|\nadd_button|backonlinelist|Show Friends``|0|0|\nadd_button|createguildinfo|Create Guild``|0|0|\nend_dialog||OK||\nadd_quick_exit|";
+						packet::dialog(peer, gayfriend);
+					}
 				}
 
 				if (cch.find("action|setSkin") == 0) {
@@ -3666,6 +3820,11 @@ label|Download Latest Version
 					string btn = "";
 					bool captcha = false;
 					bool isRegisterDialog = false;
+					bool isGuildDialog = false;
+					string guildName = "";
+					string guildStatement = "";
+					string guildFlagBg = "";
+					string guildFlagFg = "";
 					bool isFindDialog = false;
 					bool isEpoch = false;
 					bool ice = false;
@@ -3693,6 +3852,8 @@ label|Download Latest Version
 								if (infoDat[0] == "item") itemFind = infoDat[1];
 							}
 							if (infoDat[0] == "buttonClicked") btn = infoDat[1];
+							if (infoDat[0] == "dialog_name" && infoDat[1] == "guildconfirm") 
+								isGuildDialog = true;
 							if (infoDat[0] == "dialog_name" && infoDat[1] == "register")
 							{
 								isRegisterDialog = true;
@@ -3703,6 +3864,12 @@ label|Download Latest Version
 								if (infoDat[0] == "passwordverify") passwordverify = infoDat[1];
 								if (infoDat[0] == "email") email = infoDat[1];
 								if (infoDat[0] == "discord") discord = infoDat[1];
+							}
+							if (isGuildDialog) {
+								if (infoDat[0] == "gname") guildName = infoDat[1];
+								if (infoDat[0] == "gstatement") guildStatement = infoDat[1];
+								if (infoDat[0] == "ggcflagbg") guildFlagBg = infoDat[1];
+								if (infoDat[0] == "ggcflagfg") guildFlagFg = infoDat[1];
 							}
 
 							if (infoDat[0] == "dialog_name" && infoDat[1] == "epochweather")
@@ -3840,6 +4007,113 @@ label|Download Latest Version
 						}
 					}
 
+					if (isGuildDialog) {
+
+
+						int GCState = PlayerDB::guildRegister(peer, guildName, guildStatement, guildFlagFg, guildFlagBg);
+						if (GCState == -1) {
+							GamePacket ps = packetEnd(appendString(appendString(createPacket(), "OnDialogRequest"), "set_default_color|`o\n\nadd_label_with_icon|big|`wGrow Guild Creation|left|5814|\nadd_textbox|`4Oops! `oSpecial characters are not allowed in Guild name.``|\nadd_text_input|gname|`oGuild Name:``|" + guildName + "|15|\nadd_text_input|gstatement|`oGuild Statement:``|" + guildStatement + "|40|\nadd_text_input|ggcflagbg|`oGuild Flag Background ID:``|" + guildFlagBg + "|5|\nadd_text_input|ggcflagfg|`oGuild Flag Foreground ID:``|" + guildFlagFg + "|5|\n\nadd_spacer|small|\nadd_textbox|`oConfirm your guild settings by selecting `2Create Guild `obelow to create your guild.|\n\nadd_spacer|small|\nadd_textbox|`4Warning! `oThe guild name cannot be changed once you have confirmed the guild settings!|\n\nadd_spacer|small|\nend_dialog|guildconfirm|`wCancel``|`oCreate Guild``|\n"));
+							ENetPacket* packet = enet_packet_create(ps.data,
+								ps.len,
+								ENET_PACKET_FLAG_RELIABLE);
+							enet_peer_send(peer, 0, packet);
+
+							delete ps.data;
+						}
+						if (GCState == -2) {
+							GamePacket ps = packetEnd(appendString(appendString(createPacket(), "OnDialogRequest"), "set_default_color|`o\n\nadd_label_with_icon|big|`wGrow Guild Creation|left|5814|\nadd_textbox|`4Oops! `oThe Guild name you've entered is too short.``|\nadd_text_input|gname|`oGuild Name:``|" + guildName + "|15|\nadd_text_input|gstatement|`oGuild Statement:``|" + guildStatement + "|40|\nadd_text_input|ggcflagbg|`oGuild Flag Background ID:``|" + guildFlagBg + "|5|\nadd_text_input|ggcflagfg|`oGuild Flag Foreground ID:``|" + guildFlagFg + "|5|\n\nadd_spacer|small|\nadd_textbox|`oConfirm your guild settings by selecting `2Create Guild `obelow to create your guild.|\n\nadd_spacer|small|\nadd_textbox|`4Warning! `oThe guild name cannot be changed once you have confirmed the guild settings!|\n\nadd_spacer|small|\nend_dialog|guildconfirm|`wCancel``|`oCreate Guild``|\n"));
+							ENetPacket* packet = enet_packet_create(ps.data,
+								ps.len,
+								ENET_PACKET_FLAG_RELIABLE);
+							enet_peer_send(peer, 0, packet);
+
+							delete ps.data;
+						}
+						if (GCState == -3) {
+							GamePacket ps = packetEnd(appendString(appendString(createPacket(), "OnDialogRequest"), "set_default_color|`o\n\nadd_label_with_icon|big|`wGrow Guild Creation|left|5814|\nadd_textbox|`4Oops! `oThe Guild name you've entered is too long.``|\nadd_text_input|gname|`oGuild Name:``|" + guildName + "|15|\nadd_text_input|gstatement|`oGuild Statement:``|" + guildStatement + "|40|\nadd_text_input|ggcflagbg|`oGuild Flag Background ID:``|" + guildFlagBg + "|5|\nadd_text_input|ggcflagfg|`oGuild Flag Foreground ID:``|" + guildFlagFg + "|5|\n\nadd_spacer|small|\nadd_textbox|`oConfirm your guild settings by selecting `2Create Guild `obelow to create your guild.|\n\nadd_spacer|small|\nadd_textbox|`4Warning! `oThe guild name cannot be changed once you have confirmed the guild settings!|\n\nadd_spacer|small|\nend_dialog|guildconfirm|`wCancel``|`oCreate Guild``|\n"));
+							ENetPacket* packet = enet_packet_create(ps.data,
+								ps.len,
+								ENET_PACKET_FLAG_RELIABLE);
+							enet_peer_send(peer, 0, packet);
+
+							delete ps.data;
+						}
+						if (GCState == -4) {
+							GamePacket ps = packetEnd(appendString(appendString(createPacket(), "OnDialogRequest"), "set_default_color|`o\n\nadd_label_with_icon|big|`wGrow Guild Creation|left|5814|\nadd_textbox|`4Oops! `oThe Guild name you've entered is already taken.``|\nadd_text_input|gname|`oGuild Name:``|" + guildName + "|15|\nadd_text_input|gstatement|`oGuild Statement:``|" + guildStatement + "|40|\nadd_text_input|ggcflagbg|`oGuild Flag Background ID:``|" + guildFlagBg + "|5|\nadd_text_input|ggcflagfg|`oGuild Flag Foreground ID:``|" + guildFlagFg + "|5|\n\nadd_spacer|small|\nadd_textbox|`oConfirm your guild settings by selecting `2Create Guild `obelow to create your guild.|\n\nadd_spacer|small|\nadd_textbox|`4Warning! `oThe guild name cannot be changed once you have confirmed the guild settings!|\n\nadd_spacer|small|\nend_dialog|guildconfirm|`wCancel``|`oCreate Guild``|\n"));
+							ENetPacket* packet = enet_packet_create(ps.data,
+								ps.len,
+								ENET_PACKET_FLAG_RELIABLE);
+							enet_peer_send(peer, 0, packet);
+
+							delete ps.data;
+						}
+						if (GCState == -5) {
+							GamePacket ps = packetEnd(appendString(appendString(createPacket(), "OnDialogRequest"), "set_default_color|`o\n\nadd_label_with_icon|big|`wGrow Guild Creation|left|5814|\nadd_textbox|`4Oops! `oThe Guild Flag Background ID you've entered must be a number.``|\nadd_text_input|gname|`oGuild Name:``|" + guildName + "|15|\nadd_text_input|gstatement|`oGuild Statement:``|" + guildStatement + "|40|\nadd_text_input|ggcflagbg|`oGuild Flag Background ID:``|" + guildFlagBg + "|5|\nadd_text_input|ggcflagfg|`oGuild Flag Foreground ID:``|" + guildFlagFg + "|5|\n\nadd_spacer|small|\nadd_textbox|`oConfirm your guild settings by selecting `2Create Guild `obelow to create your guild.|\n\nadd_spacer|small|\nadd_textbox|`4Warning! `oThe guild name cannot be changed once you have confirmed the guild settings!|\n\nadd_spacer|small|\nend_dialog|guildconfirm|`wCancel``|`oCreate Guild``|\n"));
+							ENetPacket* packet = enet_packet_create(ps.data,
+								ps.len,
+								ENET_PACKET_FLAG_RELIABLE);
+							enet_peer_send(peer, 0, packet);
+
+							delete ps.data;
+						}
+						if (GCState == -6) {
+							GamePacket ps = packetEnd(appendString(appendString(createPacket(), "OnDialogRequest"), "set_default_color|`o\n\nadd_label_with_icon|big|`wGrow Guild Creation|left|5814|\nadd_textbox|`4Oops! `oThe Guild Flag Foreground ID you've entered must be a number.``|\nadd_text_input|gname|`oGuild Name:``|" + guildName + "|15|\nadd_text_input|gstatement|`oGuild Statement:``|" + guildStatement + "|40|\nadd_text_input|ggcflagbg|`oGuild Flag Background ID:``|" + guildFlagBg + "|5|\nadd_text_input|ggcflagfg|`oGuild Flag Foreground ID:``|" + guildFlagFg + "|5|\n\nadd_spacer|small|\nadd_textbox|`oConfirm your guild settings by selecting `2Create Guild `obelow to create your guild.|\n\nadd_spacer|small|\nadd_textbox|`4Warning! `oThe guild name cannot be changed once you have confirmed the guild settings!|\n\nadd_spacer|small|\nend_dialog|guildconfirm|`wCancel``|`oCreate Guild``|\n"));
+							ENetPacket* packet = enet_packet_create(ps.data,
+								ps.len,
+								ENET_PACKET_FLAG_RELIABLE);
+							enet_peer_send(peer, 0, packet);
+
+							delete ps.data;
+						}
+						if (GCState == -7) {
+							GamePacket ps = packetEnd(appendString(appendString(createPacket(), "OnDialogRequest"), "set_default_color|`o\n\nadd_label_with_icon|big|`wGrow Guild Creation|left|5814|\nadd_textbox|`4Oops! `oThe Guild Flag Background ID you've entered is too long or too short.``|\nadd_text_input|gname|`oGuild Name:``|" + guildName + "|15|\nadd_text_input|gstatement|`oGuild Statement:``|" + guildStatement + "|40|\nadd_text_input|ggcflagbg|`oGuild Flag Background ID:``|" + guildFlagBg + "|5|\nadd_text_input|ggcflagfg|`oGuild Flag Foreground ID:``|" + guildFlagFg + "|5|\n\nadd_spacer|small|\nadd_textbox|`oConfirm your guild settings by selecting `2Create Guild `obelow to create your guild.|\n\nadd_spacer|small|\nadd_textbox|`4Warning! `oThe guild name cannot be changed once you have confirmed the guild settings!|\n\nadd_spacer|small|\nend_dialog|guildconfirm|`wCancel``|`oCreate Guild``|\n"));
+							ENetPacket* packet = enet_packet_create(ps.data,
+								ps.len,
+								ENET_PACKET_FLAG_RELIABLE);
+							enet_peer_send(peer, 0, packet);
+
+							delete ps.data;
+						}
+						if (GCState == -8) {
+							GamePacket ps = packetEnd(appendString(appendString(createPacket(), "OnDialogRequest"), "set_default_color|`o\n\nadd_label_with_icon|big|`wGrow Guild Creation|left|5814|\nadd_textbox|`4Oops! `oThe Guild Flag Foreground ID you've entered is too long or too short.``|\nadd_text_input|gname|`oGuild Name:``|" + guildName + "|15|\nadd_text_input|gstatement|`oGuild Statement:``|" + guildStatement + "|40|\nadd_text_input|ggcflagbg|`oGuild Flag Background ID:``|" + guildFlagBg + "|5|\nadd_text_input|ggcflagfg|`oGuild Flag Foreground ID:``|" + guildFlagFg + "|5|\n\nadd_spacer|small|\nadd_textbox|`oConfirm your guild settings by selecting `2Create Guild `obelow to create your guild.|\n\nadd_spacer|small|\nadd_textbox|`4Warning! `oThe guild name cannot be changed once you have confirmed the guild settings!|\n\nadd_spacer|small|\nend_dialog|guildconfirm|`wCancel``|`oCreate Guild``|\n"));
+							ENetPacket* packet = enet_packet_create(ps.data,
+								ps.len,
+								ENET_PACKET_FLAG_RELIABLE);
+							enet_peer_send(peer, 0, packet);
+
+							delete ps.data;
+						}
+						if (world->owner != ((PlayerInfo*)(peer->data))->rawName) {
+							GamePacket ps = packetEnd(appendString(appendString(createPacket(), "OnDialogRequest"), "set_default_color|`o\n\nadd_label_with_icon|big|`wGrow Guild Creation|left|5814|\nadd_textbox|`4Oops! `oYou must make guild in world you owned!``|\nadd_text_input|gname|`oGuild Name:``|" + guildName + "|15|\nadd_text_input|gstatement|`oGuild Statement:``|" + guildStatement + "|40|\nadd_text_input|ggcflagbg|`oGuild Flag Background ID:``|" + guildFlagBg + "|5|\nadd_text_input|ggcflagfg|`oGuild Flag Foreground ID:``|" + guildFlagFg + "|5|\n\nadd_spacer|small|\nadd_textbox|`oConfirm your guild settings by selecting `2Create Guild `obelow to create your guild.|\n\nadd_spacer|small|\nadd_textbox|`4Warning! `oThe guild name cannot be changed once you have confirmed the guild settings!|\n\nadd_spacer|small|\nend_dialog|guildconfirm|`wCancel``|`oCreate Guild``|\n"));
+							ENetPacket* packet = enet_packet_create(ps.data,
+								ps.len,
+								ENET_PACKET_FLAG_RELIABLE);
+							enet_peer_send(peer, 0, packet);
+
+							delete ps.data;
+						}
+						else {
+							if (GCState == 1) {
+
+								((PlayerInfo*)(peer->data))->createGuildName = guildName;
+								((PlayerInfo*)(peer->data))->createGuildStatement = guildStatement;
+
+
+								((PlayerInfo*)(peer->data))->createGuildFlagBg = guildFlagBg;
+								((PlayerInfo*)(peer->data))->createGuildFlagFg = guildFlagFg;
+
+								GamePacket ps = packetEnd(appendString(appendString(createPacket(), "OnDialogRequest"), "set_default_color|`o\n\nadd_label_with_icon|big|`wGrow Guild|left|5814|\nadd_textbox|`1Guild Name: `o" + guildName + "``|\nadd_textbox|`1Guild Statement: `o" + guildStatement + "``|\nadd_label_with_icon|small|`1<-Guild Flag Background``|left|" + guildFlagBg + "|\nadd_label_with_icon|small|`1<-Guild Flag Foreground``|left|" + guildFlagFg + "|\n\nadd_spacer|small|\nadd_textbox|`oCost: `4250,000 Gems``|\n\nadd_spacer|small|\nadd_button|confirmcreateguild|`oCreate Guild``|\nend_dialog||`wCancel``||\n"));
+								ENetPacket* packet = enet_packet_create(ps.data,
+									ps.len,
+									ENET_PACKET_FLAG_RELIABLE);
+								enet_peer_send(peer, 0, packet);
+
+								delete ps.data;
+
+							}
+						}
+					}
+
 					if (btn == "worldPublic") if (((PlayerInfo*)(peer->data))->rawName == getPlyersWorld(peer)->owner) getPlyersWorld(peer)->isPublic = true;
 					if (btn == "worldPrivate") if (((PlayerInfo*)(peer->data))->rawName == getPlyersWorld(peer)->owner) getPlyersWorld(peer)->isPublic = false;
 					if (btn == "backsocialportal") {
@@ -3926,6 +4200,75 @@ label|Download Latest Version
 						else {*/
 						string gaying = "set_default_color|`o\n\nadd_label_with_icon|big|`o" + std::to_string(onlinecount) + " of " + std::to_string(totalcount) + " `wFriends Online|left|1366|\n\nadd_spacer|small|\nadd_button|chc0|`wClose``|0|0|\nadd_spacer|small|" + offlinelist + "\nadd_spacer|small|\n\nadd_button|frnoption|`oFriend Options``|0|0|\nadd_button|backonlinelist|Back``|0|0|\nadd_button||`oClose``|0|0|\nadd_quick_exit|";
 						packet::dialog(peer, gaying);
+					}
+					if (btn == "createguild") {
+						string guildisigay = "set_default_color|`o\n\nadd_label_with_icon|big|`wGrow Guild Creation``|left|5814|\nadd_spacer|small|\nadd_text_input|gname|Guild Name: ||20|\nadd_text_input|gstatement|Guild Statement: ||100|\nadd_text_input|ggcflagbg|`oGuild Flag Background ID:``||5|\nadd_text_input|ggcflagfg|`oGuild Flag Foreground ID:``||5|\nadd_spacer|small|\nadd_textbox|`oConfirm your guild settings by selecting `2Create Guild `obelow to create your guild.|\nadd_spacer|small|\nadd_textbox|`8Remember`o: A guild can only be created in a world owned by you and locked with a `5World Lock`o!|\nadd_spacer|small|\nadd_textbox|`4Warning! `oThe guild name cannot be changed once you have confirmed the guild settings!|\nadd_spacer|small|\nend_dialog|guildconfirm|Cancel|Create Guild|\nadd_quick_exit|";
+						packet::dialog(peer, guildisigay);
+					}
+					if (btn == "createguildinfo") {
+						string gayguild = "set_default_color|`o\n\nadd_label_with_icon|big|`wGrow Guild|left|5814|\nadd_label|small|`oWelcome to Grow Guilds where you can create a Guild! With a Guild you can level up the Guild to add more members.``|left|4|\n\nadd_spacer|small|\nadd_textbox|`oYou will be charged `60 `oGems.``|\nadd_spacer|small|\nadd_button|createguild|`oCreate a Guild``|0|0|\nadd_button|backsocialportal|Back|0|0|\nend_dialog||Close||\nadd_quick_exit|";
+						packet::dialog(peer, gayguild);
+						/*packet::consolemessage(peer, "`w[`2+`w] `wThis option will be added soon!");*/
+					}
+					if (btn == "confirmcreateguild") {
+						packet::consolemessage(peer, "You created guild");
+						string guildName = ((PlayerInfo*)(peer->data))->createGuildName;
+						string guildStatement = ((PlayerInfo*)(peer->data))->createGuildStatement;
+						string fixedguildName = PlayerDB::getProperName(guildName);
+						string guildFlagbg = ((PlayerInfo*)(peer->data))->createGuildFlagBg;
+						string guildFlagfg = ((PlayerInfo*)(peer->data))->createGuildFlagFg;
+
+						//guildmem.push_back(((PlayerInfo*)(peer->data))->rawName);
+
+						std::ofstream o("guilds/" + fixedguildName + ".json");
+						if (!o.is_open()) {
+							cout << GetLastError() << endl;
+							_getch();
+						}
+						json j;
+						vector<string> test1s;
+						vector<string>test2s;
+
+						((PlayerInfo*)(peer->data))->guildMembers.push_back(((PlayerInfo*)(peer->data))->rawName);
+						j["GuildName"] = ((PlayerInfo*)(peer->data))->createGuildName;
+						j["GuildRawName"] = fixedguildName;
+						j["GuildStatement"] = ((PlayerInfo*)(peer->data))->createGuildStatement;
+						j["Leader"] = ((PlayerInfo*)(peer->data))->rawName;
+						j["Co-Leader"] = test1s;
+						j["Elder-Leader"] = test2s;
+						j["Member"] = ((PlayerInfo*)(peer->data))->guildMembers;
+						j["GuildLevel"] = 0;
+						j["GuildExp"] = 0;
+						j["GuildWorld"] = ((PlayerInfo*)(peer->data))->currentWorld;
+						j["backgroundflag"] = stoi(((PlayerInfo*)(peer->data))->createGuildFlagBg);
+						j["foregroundflag"] = stoi(((PlayerInfo*)(peer->data))->createGuildFlagFg);
+						o << j << std::endl;
+
+						((PlayerInfo*)(peer->data))->guild = guildName;
+						((PlayerInfo*)(peer->data))->joinguild = true;
+						std::ifstream ifff("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json");
+
+
+						if (ifff.fail()) {
+							ifff.close();
+
+
+						}
+						if (ifff.is_open()) {
+						}
+						json x;
+						ifff >> x; //load
+
+						x["guild"] = ((PlayerInfo*)(peer->data))->guild;
+						x["joinguild"] = ((PlayerInfo*)(peer->data))->joinguild; //edit
+
+						std::ofstream y("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json"); //save
+						if (!y.is_open()) {
+							cout << GetLastError() << endl;
+							_getch();
+						}
+
+						y << x << std::endl;
 					}
 
 					if (isEpoch) {
@@ -4395,6 +4738,9 @@ label|Download Latest Version
 					else if (str == "/sb") {
 					    packet::consolemessage(peer, "Usage : /sb <message>");
 					}
+					else if (str == "/bc") {
+					packet::consolemessage(peer, "Usage : /bc <message>");
+					}
 
 					else if (str.substr(0, 4) == "/sb ") {
 						using namespace std::chrono;
@@ -4441,6 +4787,52 @@ label|Download Latest Version
 							//enet_host_flush(server);
 						}
 						delete[] data;
+					}
+					else if (str.substr(0, 4) == "/bc ") {
+					using namespace std::chrono;
+					if (((PlayerInfo*)(peer->data))->lastSB + 45000 < (duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count())
+					{
+						((PlayerInfo*)(peer->data))->lastSB = (duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count();
+					}
+					else {
+						packet::consolemessage(peer, "Wait a minute before using the Broadcast command again!");
+						continue;
+					}
+
+					string name = ((PlayerInfo*)(peer->data))->displayName;
+					gamepacket_t p;
+					p.Insert("OnConsoleMessage");
+					p.Insert("CP:0_PL:4_OID:_CT:[SB]_ `w** Broadcast`` `5from `$`2" + name + "```` (in `$" + ((PlayerInfo*)(peer->data))->currentWorld + "``) ** :`` `# " + str.substr(4, cch.length() - 4 - 1));
+
+					string text = "action|play_sfx\nfile|audio/beep.wav\ndelayMS|0\n";
+					BYTE* data = new BYTE[5 + text.length()];
+					BYTE zero = 0;
+					int type = 3;
+					memcpy(data, &type, 4);
+					memcpy(data + 4, text.c_str(), text.length());
+					memcpy(data + 4 + text.length(), &zero, 1);
+					ENetPeer* currentPeer;
+
+					for (currentPeer = server->peers;
+						currentPeer < &server->peers[server->peerCount];
+						++currentPeer)
+					{
+						if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
+							continue;
+						if (!((PlayerInfo*)(currentPeer->data))->radio)
+							continue;
+
+						p.CreatePacket(currentPeer);
+
+						ENetPacket* packet2 = enet_packet_create(data,
+							5 + text.length(),
+							ENET_PACKET_FLAG_RELIABLE);
+
+						enet_peer_send(currentPeer, 0, packet2);
+
+						//enet_host_flush(server);
+					}
+					delete[] data;
 					}
 					else if (str.substr(0, 5) == "/jsb ") {
 						using namespace std::chrono;
@@ -4724,6 +5116,24 @@ label|Download Latest Version
 						if (logStatus == 1) {
 							packet::consolemessage(peer, "`rYou have successfully logged into your account!``");
 							((PlayerInfo*)(event.peer->data))->displayName = ((PlayerInfo*)(event.peer->data))->tankIDName;
+							if (((PlayerInfo*)(peer->data))->adminLevel == 1337) {
+								((PlayerInfo*)(event.peer->data))->displayName = "`4[SC] `6@" + ((PlayerInfo*)(event.peer->data))->tankIDName;
+							}
+							else if (((PlayerInfo*)(peer->data))->adminLevel == 999) {
+								((PlayerInfo*)(event.peer->data))->displayName = "`4@" + ((PlayerInfo*)(event.peer->data))->tankIDName;
+							}
+							else if (((PlayerInfo*)(peer->data))->adminLevel == 777) {
+								((PlayerInfo*)(event.peer->data))->displayName = "`c@" + ((PlayerInfo*)(event.peer->data))->tankIDName;
+							}
+							else if (((PlayerInfo*)(peer->data))->adminLevel == 666) {
+								((PlayerInfo*)(event.peer->data))->displayName = "`#@ " + ((PlayerInfo*)(event.peer->data))->tankIDName;
+							}
+							else if (((PlayerInfo*)(peer->data))->adminLevel == 444) {
+								((PlayerInfo*)(event.peer->data))->displayName = "`w[`1VIP`w] " + ((PlayerInfo*)(event.peer->data))->tankIDName;
+							}
+							else {
+								((PlayerInfo*)(event.peer->data))->displayName = ((PlayerInfo*)(event.peer->data))->tankIDName;
+							}
 						}
 						else {
 							packet::consolemessage(peer, "`rWrong username or password!``");
@@ -4789,8 +5199,6 @@ label|Download Latest Version
 					
 					
 					packet::consolemessage(peer, "`2Server by Ibord, credit to GrowtopiaNoobs");
-					packet::consolemessage(peer, "`6It's `4Halloween!`` Visit the world `4GROWGANOTH`` to sacrifice your items to Almighty Growganoth!``");
-					packet::consolemessage(peer, "Growtopians have collectively released `22,147,483,647`` `9Corrupted Souls`` from the Tomb of Growganoth!Growganoth is pleased and unleashes the corrupted `2Tarantula Legs`` upon Growtopia!");
 					PlayerInventory inventory;
 					for (int i = 0; i < 200; i++)
 					{
