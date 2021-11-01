@@ -3,26 +3,22 @@ add_label_with_icon|big|`wThe Growtopia Gazette``|left|5016|
 add_spacer|small|
 add_image_button|banner|interface/large/news_banner.rttex|bannerlayout|OPENSURVEY||
 add_spacer|small|
-add_textbox|`wOctober 29th: `5Voucher Dayz!``|left|
+add_textbox|`wNovember 1st: `5November Update - Grow Pass!``|left|
 add_spacer|small|
-add_image_button|iotm_layout|interface/large/gazette/gazette_3columns_feature_btn04.rttex|3imageslayout|OPENSTORE|main/itemomonth|
+add_image_button|iotm_layout|interface/large/gazette/gazette_3columns_feature_btn01.rttex|3imageslayout|OPENSTORE|main/itemomonth|
 add_image_button|iotm_layout|interface/large/gazette/gazette_3columns_feature_btn08.rttex|3imageslayout|OPENSTORE|main/summer_pack|
-add_image_button|iotm_layout|interface/large/gazette/gazette_3columns_feature_btn06.rttex|3imageslayout|OPENSTORE|main/gems_bundle05|
+add_image_button|iotm_layout|interface/large/gazette/gazette_3columns_feature_btn02.rttex|3imageslayout|OPENSTORE|main/gems_bundle05|
 add_spacer|small|
-add_textbox|Sail through the dark seas this `2Voucher Dayz `$with the `8FerryMan of the Underworld`$! Purchase selected Gem Packs from the store and redeem them against special store packs and exclusive cosmetic items. Get more than what you pay for during this event from the `239th to the 31st of October`$. Enjoy!``|left|
+add_textbox|`$Aim to hit your mark by redeeming November's Grow Pass Item of the Season, `2Mystic Bow`$, and it's royal version, `2Royal Mystic Bow`$! Also, don't forget to put on Gladehart's Subscriber's Item: the `8Smiling Mask`$!``|left|
 add_spacer|small|
-add_textbox|Join us in this spine-chilling journey through the week for some mysterious surprises for `2Halloween Week `$running from October 21st to 31st! Want to know what's lurking this Halloween? Decipher `2ThePsyborg's`$ Dev Diary to find out more!``|left|
-add_spacer|small|
-add_textbox|Visit `2GROWGANOTH `$and stay way from the Evil Eye's sight - we need you alive, for now!``|left|
-add_spacer|small|
-add_textbox|Freebie alert! `2Tapjoy 2X`$: Get double payouts with TapJoy from the 29th to the 31st of October! Don't miss out on scoring tons of gems!``|left|
+add_textbox|`$Don't forget to check Morse Dev Diary.``|left|
 add_spacer|small|
 add_image_button|iotm_layout|interface/large/gazette/gazette_3columns_forum_btn01.rttex|3imageslayout|https://www.growtopiagame.com/forums/forum/general/announcements/7050064-summerfest-2021|Do you want to open the Growtopia Forum and check out the latest update?|
 add_spacer|small|
 add_layout_spacer|3imageslayout|
 add_layout_spacer|3imageslayout|
 add_spacer|small|
-add_textbox|The Growtopia survey for the October Update is now open! By completing the survey you will receive `22 Growtoken`` if you have Advanced Account Protection enabled. Claim your reward and complete the survey on your mobile device to let us know what you think!|left|
+add_textbox|The Growtopia survey for the October (Part 2) Update is now open! By completing the survey you will receive `22 Growtoken`` if you have Advanced Account Protection enabled. Claim your reward and complete the survey on your mobile device to let us know what you think!|left|
 add_spacer|small|
 add_url_button|survey|`wGive us your opinion!``|noflags|OPENSURVEY||
 add_spacer|small|
