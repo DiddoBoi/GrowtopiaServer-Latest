@@ -47,3 +47,4 @@ https://bit.ly/guckproject
 - Updated news.txt to latest
 - Updated Version to v3.74 (including news)
 - Guild System (BETA)
+- Added /bc
