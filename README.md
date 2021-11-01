@@ -45,3 +45,5 @@ https://bit.ly/guckproject
 - Added Simple Friend System
 - Updated items again to latest
 - Updated news.txt to latest
+- Updated Version to v3.74 (including news)
+- Guild System (BETA)
