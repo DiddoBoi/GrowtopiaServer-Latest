@@ -48,6 +48,7 @@ char _getch() {
 #include "crypt_blowfish/crypt_blowfish.cpp"
 #include "crypt_blowfish/ow-crypt.cpp"
 #include "bcrypt.cpp"
+#include <regex>
 #else
 #include "bcrypt.h"
 #include "bcrypt.cpp"
@@ -84,6 +85,7 @@ int cId = 1;
 BYTE* itemsDat = 0;
 int itemsDatSize = 0;
 int hasil = 0;
+int prize = 0;
 int resultnbr1 = 0;
 int resultnbr2 = 0;
 //Linux equivalent of GetLastError
@@ -566,6 +568,9 @@ struct PlayerInfo {
 	int netID;
 	int level = 1;
 	int xp = 0;
+	int gem = 0;
+	int adminLevel = 0;
+
 	bool haveGrowId = false;
 	int characterState = 0;
 	vector<string>friendinfo;
@@ -574,9 +579,9 @@ struct PlayerInfo {
 	string tankIDPass = "";
 	string requestedName = "";
 	string rawName = "";
+	long long int quest = 0;
 	string displayName = "";
 	string country = "";
-	int adminLevel = 0;
 	string currentWorld = "START";
 	string lastInfoname = "";
 	string lastgm = "";
@@ -584,6 +589,7 @@ struct PlayerInfo {
 	string lastgmname = "";
 	string lastgmworld = "";
 	string guildlast = "";
+	bool DailyMaths = false;
 	bool isinvited = false;
 	int guildBg = 0;
 	int guildFg = 0;
@@ -593,6 +599,8 @@ struct PlayerInfo {
 	string guildLeader = "";
 	vector <string> guildmatelist;
 	vector<string>guildMembers;
+	vector<string>guildGE;
+	vector<string>guildGC;
 	int guildlevel = 0;
 	int guildexp = 0;
 	string createGuildName = "";
@@ -611,6 +619,7 @@ struct PlayerInfo {
 	int y1;
 	bool isRotatedLeft = false;
 	string charIP = "";
+	int peffect = 8421376;
 	bool isUpdating = false;
 	bool joinClothesUpdated = false;
 	
@@ -775,6 +784,7 @@ public:
 	static void OnTextOverlay(ENetPeer* peer, string text);
 	static void OnSetCurrentWeather(ENetPeer* peer, int weather);
 	static void PlayAudio(ENetPeer* peer, string audioFile, int delayMS);
+	static void OnAddNotification(ENetPeer* peer, string text, string audiosound, string interfaceimage);
 	static void OnTalkBubble(ENetPeer* peer, int netID, string text, int chatColor, bool isOverlay);
 	static int guildRegister(ENetPeer* peer, string guildName, string guildStatement, string guildFlagfg, string guildFlagbg);
 	static void OnTalkBubble(ENetPeer* peer, int netID, string message, bool stay) {
@@ -1020,6 +1030,7 @@ int PlayerDB::playerRegister(string username, string password, string passwordve
 	j["email"] = email;
 	j["discord"] = discord;
 	j["adminLevel"] = 0;
+	j["gem"] = 0;
 	j["level"] = 1;
 	j["xp"] = 0;
 	j["guild"] = "";
@@ -1135,6 +1146,30 @@ namespace packet {
 			ENET_PACKET_FLAG_RELIABLE);
 		enet_peer_send(peer, 0, packet);
 		delete[] data;
+	}
+}
+
+void SendConsole(const string text, const string type) {
+	time_t currentTime; time(&currentTime); const auto localTime = localtime(&currentTime);
+	const auto Hour = localTime->tm_hour; const auto Min = localTime->tm_min; const auto Sec = localTime->tm_sec;
+	if (type != "CHAT") {
+		cout << "[" + to_string(Hour) + ":" + to_string(Min) + ":" + to_string(Sec) + " " + type + """]: " << text << endl;
+	}
+}
+void savejson(ENetPeer* peer) {
+	if (((PlayerInfo*)(peer->data))->haveGrowId == true) {
+		PlayerInfo* p5 = ((PlayerInfo*)(peer->data));
+		string username = PlayerDB::getProperName(p5->rawName);
+		ifstream fg("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json");
+		json j;
+		fg >> j;
+		fg.close();
+		j["gems"] = ((PlayerInfo*)(peer->data))->gem;
+		j["level"] = ((PlayerInfo*)(peer->data))->level;
+		j["xp"] = ((PlayerInfo*)(peer->data))->xp;
+		ofstream fs("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json");
+		fs << j;
+		fs.close();
 	}
 }
 
@@ -1415,6 +1450,8 @@ struct ItemDefinition {
 	int growTime;
 	ClothTypes clothType;
 	int rarity;
+	string effect = "(Mod removed)";
+	string effects = "(Mod added)";
 	unsigned char maxAmount = 0;
 	string extraFile = "";
 	int extraFileHash = 0;
@@ -2121,6 +2158,13 @@ void sendGazette(ENetPeer* peer) {
 	std::string newsString(buffer.str());
 	packet::dialog(peer, newsString);
 }
+void sendGrowmojis(ENetPeer* peer) {
+	std::ifstream emoji("growmoji.txt");
+	std::stringstream buffer;
+	buffer << emoji.rdbuf();
+	std::string newsString(buffer.str());
+	packet::dialog(peer, newsString);
+}
 
 BYTE* packPlayerMoving(PlayerMoving* dataStruct)
 {
@@ -2285,6 +2329,445 @@ void SendPacketRaw(int a1, void *packetData, size_t packetDataSize, void *a4, EN
 		enet_peer_send(peer, 0, packet2ssw);
 		delete p2ssw.data;
 	}
+	void craftItemText() {
+		int current = -1;
+		std::ifstream infile("effect.txt");
+		for (std::string line; getline(infile, line);) {
+			if (line.length() > 5 && line[0] != '/' && line[1] != '/') {
+				vector<string> ex = explode("|", line);
+				ItemDefinition def;
+				itemDefs.at(atoi(ex[0].c_str())).effect = ex[3] + " `$(`o" + ex[1] + " `omod removed)";
+				itemDefs.at(atoi(ex[0].c_str())).effects = ex[2] + " `$(`o" + ex[1] + " `omod added)";
+			}
+		}
+	}
+	void getAutoEffect(ENetPeer* peer) {
+		PlayerInfo* info = ((PlayerInfo*)(peer->data));
+		if (info->cloth_hand == 5480) {
+			info->peffect = 8421456;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 10626) {
+			info->peffect = 8421376 + 111;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 5276) {
+			info->peffect = 8421376 + 47;
+			craftItemText();
+		}
+		else if (info->cloth_hair == 4746) {
+			info->peffect = 8421376 + 75;
+			craftItemText();
+		}
+		else if (info->cloth_hair == 4748) {
+			info->peffect = 8421376 + 75;
+			craftItemText();
+		}
+		else if (info->cloth_hair == 4750) {
+			info->peffect = 8421376 + 75;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 10652) {
+			info->peffect = 8421376 + 188;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 9716) {
+			info->peffect = 8421529;
+			craftItemText();
+		}
+		else if (info->cloth_shirt == 1780) {
+			info->peffect = 8421396;
+			craftItemText();
+		}
+		else if (info->cloth_shirt == 10426) {
+			info->peffect = 8421559;
+			craftItemText();
+		}
+		else if (info->cloth_face == 1204) {
+			info->peffect = 8421386;
+			craftItemText();
+		}
+		else if (info->cloth_face == 10128) {
+			info->peffect = 8421376 + 683;
+			craftItemText();
+		}
+		else if (info->cloth_feet == 10618) {
+			info->peffect = 8421376 + 699;
+			craftItemText();
+		}
+		else if (info->cloth_face == 138) {
+			info->peffect = 8421377;
+			craftItemText();
+		}
+		else if (info->cloth_face == 2476) {
+			info->peffect = 8421415;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 366 || info->cloth_hand == 1464) {
+			info->peffect = 8421378;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 472) {
+			info->peffect = 8421379;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 7912) {
+			info->peffect = 8421487;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 594) {
+			info->peffect = 8421380;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 768) {
+			info->peffect = 8421381;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 900) {
+			info->peffect = 8421382;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 910) {
+			info->peffect = 8421383;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 930) {
+			info->peffect = 8421384;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1016) {
+			info->peffect = 8421385;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1378) {
+			info->peffect = 8421387;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1484) {
+			info->peffect = 8421389;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1512) {
+			info->peffect = 8421390;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1542) {
+			info->peffect = 8421391;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1576) {
+			info->peffect = 8421392;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1676) {
+			info->peffect = 8421393;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1710) {
+			info->peffect = 8421394;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1748) {
+			info->peffect = 8421395;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1782) {
+			info->peffect = 8421397;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1804) {
+			info->peffect = 8421398;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1868) {
+			info->peffect = 8421399;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1874) {
+			info->peffect = 8421400;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1946) {
+			info->peffect = 8421401;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1948) {
+			info->peffect = 8421402;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1956) {
+			info->peffect = 8421403;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2908) {
+			info->peffect = 8421405;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2952) {
+			info->peffect = 8421405;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 6312) {
+			info->peffect = 8421405;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1980) {
+			info->peffect = 8421406;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2066) {
+			info->peffect = 8421407;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2212) {
+			info->peffect = 8421408;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2218) {
+			info->peffect = 8421409;
+			craftItemText();
+		}
+		else if (info->cloth_feet == 2220) {
+			info->peffect = 8421410;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2266) {
+			info->peffect = 8421411;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2386) {
+			info->peffect = 8421412;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2388) {
+			info->peffect = 8421413;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2450) {
+			info->peffect = 8421414;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2512) {
+			info->peffect = 8421417;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2572) {
+			info->peffect = 8421418;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2592) {
+			info->peffect = 8421419;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2720) {
+			info->peffect = 8421420;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2752) {
+			info->peffect = 8421421;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2754) {
+			info->peffect = 8421422;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2756) {
+			info->peffect = 8421423;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2802) {
+			info->peffect = 8421425;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2866) {
+			info->peffect = 8421426;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2876) {
+			info->peffect = 8421427;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2886) {
+			info->peffect = 8421430;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 2890) {
+			info->peffect = 8421431;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 3066) {
+			info->peffect = 8421433;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 3124) {
+			info->peffect = 8421434;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 3168) {
+			info->peffect = 8421435;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 3214) {
+			info->peffect = 8421436;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 3300) {
+			info->peffect = 8421440;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 3418) {
+			info->peffect = 8421441;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 3476) {
+			info->peffect = 8421442;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 3686) {
+			info->peffect = 8421444;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 3716) {
+			info->peffect = 8421445;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 4290) {
+			info->peffect = 8421447;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 4474) {
+			info->peffect = 8421448;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 4464) {
+			info->peffect = 8421449;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 1576) {
+			info->peffect = 8421450;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 4778 || info->cloth_hand == 6026) {
+			info->peffect = 8421452;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 4996) {
+			info->peffect = 8421453;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 4840) {
+			info->peffect = 8421454;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 5480) {
+			info->peffect = 8421456;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 6110) {
+			info->peffect = 8421457;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 6308) {
+			info->peffect = 8421458;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 6310) {
+			info->peffect = 8421459;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 6298) {
+			info->peffect = 8421460;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 6756) {
+			info->peffect = 8421461;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 7044) {
+			info->peffect = 8421462;
+			craftItemText();
+		}
+		else if (info->cloth_shirt == 6892) {
+			info->peffect = 8421463;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 7088) {
+			info->peffect = 8421465;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 7098) {
+			info->peffect = 8421466;
+			craftItemText();
+		}
+		else if (info->cloth_shirt == 7192) {
+			info->peffect = 8421467;
+			craftItemText();
+		}
+		else if (info->cloth_shirt == 7136) {
+			info->peffect = 8421468;
+			craftItemText();
+		}
+		else if (info->cloth_mask == 7216) {
+			info->peffect = 8421470;
+			craftItemText();
+		}
+		else if (info->cloth_back == 7196) {
+			info->peffect = 8421471;
+			craftItemText();
+		}
+		else if (info->cloth_back == 7392) {
+			info->peffect = 8421472;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 7488) {
+			info->peffect = 8421479;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 7586) {
+			info->peffect = 8421480;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 7650) {
+			info->peffect = 8421481;
+			craftItemText();
+		}
+		else if (info->cloth_feet == 7950) {
+			info->peffect = 8421489;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 8036) {
+			info->peffect = 8421494;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 8910) {
+			info->peffect = 8421505;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 8942) {
+			info->peffect = 8421506;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 8948) {
+			info->peffect = 8421507;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 8946) {
+			info->peffect = 8421509;
+			craftItemText();
+		}
+		else if (info->cloth_back == 9006) {
+			info->peffect = 8421511;
+			craftItemText();
+		}
+		else if (info->cloth_hand == 9116 || info->cloth_hand == 9118 || info->cloth_hand == 9120 || info->cloth_hand == 9122) {
+			info->peffect = 8421376 + 111;
+			craftItemText();
+		}
+		else {
+			info->peffect = 8421376;
+			craftItemText();
+		}
+	}
 
 	void sendPData(ENetPeer* peer, PlayerMoving* data)
 	{
@@ -2346,6 +2829,68 @@ void SendPacketRaw(int a1, void *packetData, size_t packetDataSize, void *a4, EN
 			}
 		}
 
+	void sendPuncheffect(ENetPeer* peer) {
+		PlayerInfo* info = ((PlayerInfo*)(peer->data));
+		int netID = info->netID;
+		int state = getState(info);
+		int pro = getState(info);
+		int statey = 0;
+		if (info->cloth_hand == 6028) statey = 1024;
+		if (info->cloth_hand == 6262) statey = 8192;
+		if (info->haveGrowId == false) statey = 50000;
+		for (ENetPeer* currentPeer = server->peers; currentPeer < &server->peers[server->peerCount]; ++currentPeer) {
+			if (currentPeer->state != ENET_PEER_STATE_CONNECTED) continue;
+			if (isHere(peer, currentPeer)) {
+				PlayerMoving data;
+				data.packetType = 0x14;
+				data.characterState = statey;
+				data.x = 1000;
+				data.y = 100;
+				data.punchX = 0;
+				data.punchY = 0;
+				data.XSpeed = 300;
+				data.YSpeed = 600;
+				data.netID = netID;
+				data.plantingTree = state;
+				BYTE* raw = packPlayerMoving(&data);
+				int var = info->peffect;
+				memcpy(raw + 1, &var, 3);
+				SendPacketRaw(4, raw, 56, 0, currentPeer, ENET_PACKET_FLAG_RELIABLE);
+			}
+		}
+	}
+	void sendPuncheffectpeer(ENetPeer* peer, int punch) {
+		PlayerInfo* info = ((PlayerInfo*)(peer->data));
+		int netID = info->netID;
+		int state = getState(info);
+		PlayerMoving data;
+		float water = 125.0f;
+		data.packetType = 0x14;
+		data.characterState = ((PlayerInfo*)(peer->data))->characterState; // animation
+		data.x = 1000;
+		if (((PlayerInfo*)(peer->data))->cloth_hand == 366) {
+			data.y = -400;
+		}
+		else {
+			data.y = 400;
+		}
+		data.punchX = -1;
+		data.punchY = -1;
+		data.XSpeed = 300;
+		if (((PlayerInfo*)(peer->data))->cloth_back == 9472) {
+			data.YSpeed = 600;
+		}
+		else {
+			data.YSpeed = 1150;
+		}
+		data.netID = netID;
+		data.plantingTree = state;
+		BYTE* raw = packPlayerMoving(&data);
+		int var = punch;
+		memcpy(raw + 1, &var, 3);
+		memcpy(raw + 16, &water, 4);
+		SendPacketRaw(4, raw, 56, 0, peer, ENET_PACKET_FLAG_RELIABLE);
+	}
 
 	void sendNothingHappened(ENetPeer* peer, int x, int y) {
 		PlayerMoving data;
@@ -3605,7 +4150,7 @@ label|Download Latest Version
 								int levels = static_cast<PlayerInfo*>(peer->data)->level;
 								int xp = static_cast<PlayerInfo*>(peer->data)->xp;
 								string name = ((PlayerInfo*)(peer->data))->displayName;
-								packet::dialog(peer, "set_default_color|`o\n\nadd_player_info|" + name + " | " + std::to_string(levels) + " | " + std::to_string(xp) + " | " + to_string(static_cast<PlayerInfo*>(peer->data)->level * 1500) + "|\nadd_spacer|small|\nadd_button||Close|0|0|\nadd_quick_exit");
+								packet::dialog(peer, "set_default_color|`o\n\nadd_player_info|" + name + " | " + std::to_string(levels) + " | " + std::to_string(xp) + " | " + to_string(static_cast<PlayerInfo*>(peer->data)->level * 1500) + "|\nadd_spacer|small|\nadd_button|\nadd_spacer|small|\nadd_button|growmojis|`$Growmoji||\nadd_spacer|small|\nadd_button|chc0|Close|noflags|0|0|\n\nadd_quick_exit|\nnend_dialog|gazette||OK|");
 							}
 							else {
 								string name = ((PlayerInfo*)(currentPeer->data))->displayName;
@@ -3617,6 +4162,10 @@ label|Download Latest Version
 				}
 
 				if (cch.find("action|friends\n") == 0) {
+					if (((PlayerInfo*)(peer->data))->haveGrowId == false) {
+						packet::dialog(peer, "set_default_color|`o\n\nadd_label_with_icon|big|`wGet a GrowID``|left|206|\n\nadd_spacer|small|\nadd_textbox|A `wGrowID `wmeans `oyou can use a name and password to logon from any device.|\nadd_spacer|small|\nadd_textbox|This `wname `owill be reserved for you and `wshown to other players`o, so choose carefully!|\nadd_text_input|username|GrowID||30|\nadd_text_input|password|Password||100|\nadd_text_input|passwordverify|Password Verify||100|\nadd_textbox|Your `wemail address `owill only be used for account verification purposes and won't be spammed or shared. If you use a fake email, you'll never be able to recover or change your password.|\nadd_text_input|email|Email||100|\nadd_textbox|Your `wDiscord ID `owill be used for secondary verification if you lost access to your `wemail address`o! Please enter in such format: `wdiscordname#tag`o. Your `wDiscord Tag `ocan be found in your `wDiscord account settings`o.|\nadd_text_input|discord|Discord||100|\nend_dialog|register|Cancel|Get My GrowID!|\n");
+						enet_host_flush(server);
+					}
 					if (((PlayerInfo*)(peer->data))->joinguild == true) {
 						string properson = "set_default_color|`w\n\nadd_label_with_icon|big|Social Portal``|left|1366|\n\nadd_spacer|small|\nadd_button|backonlinelist|Show Friends``|0|0|\nadd_button|showguild|Show Guild Members``|0|0|\nend_dialog||OK||\nadd_quick_exit|";
 						packet::dialog(peer, properson);
@@ -3825,6 +4374,7 @@ label|Download Latest Version
 					string guildStatement = "";
 					string guildFlagBg = "";
 					string guildFlagFg = "";
+					string item = "";
 					bool isFindDialog = false;
 					bool isEpoch = false;
 					bool ice = false;
@@ -4270,6 +4820,97 @@ label|Download Latest Version
 
 						y << x << std::endl;
 					}
+					if (btn == "showguild") {
+						string onlinegmlist = "";
+						string grole = "";
+						int onlinecount = 0;
+						string guildname = PlayerDB::getProperName(((PlayerInfo*)(peer->data))->guild);
+						if (guildname != "") {
+							try {
+								std::ifstream ifff("guilds/" + guildname + ".json");
+								if (ifff.fail()) {
+									ifff.close();
+									((PlayerInfo*)(peer->data))->guild = "";
+									continue;
+								}
+								json j;
+								ifff >> j;
+								int gfbg, gffg, guildlvl, guildxp;
+								string gstatement, gleader;
+								vector<string> gmembers; vector<string> GE; vector<string> GC;
+								gfbg = j["backgroundflag"];
+								gffg = j["foregroundflag"];
+								gstatement = j["GuildStatement"].get<std::string>();
+								gleader = j["Leader"].get<std::string>();
+								guildlvl = j["GuildLevel"];
+								guildxp = j["GuildExp"];
+								for (int i = 0; i < j["Member"].size(); i++) {
+									gmembers.push_back(j["Member"][i]);
+								}
+								for (int i = 0; i < j["Elder-Leader"].size(); i++) {
+									GE.push_back(j["Elder-Leader"][i]);
+								}
+								for (int i = 0; i < j["Co-Leader"].size(); i++) {
+									GC.push_back(j["Co-Leader"][i]);
+								}
+								((PlayerInfo*)(peer->data))->guildlevel = guildlvl;
+								((PlayerInfo*)(peer->data))->guildexp = guildxp;
+								((PlayerInfo*)(peer->data))->guildBg = gfbg;
+								((PlayerInfo*)(peer->data))->guildFg = gffg;
+								((PlayerInfo*)(peer->data))->guildStatement = gstatement;
+								((PlayerInfo*)(peer->data))->guildLeader = gleader;
+								((PlayerInfo*)(peer->data))->guildMembers = gmembers;
+								((PlayerInfo*)(peer->data))->guildGE = GE;
+								((PlayerInfo*)(peer->data))->guildGC = GC;
+								ifff.close();
+							}
+							catch (std::exception&) {
+								SendConsole("showguild Critical error details: rawName(" + ((PlayerInfo*)(peer->data))->rawName + ")", "ERROR");
+								enet_peer_disconnect_now(peer, 0);
+							}
+							catch (std::runtime_error&) {
+								SendConsole("showguild Critical error details: name(" + ((PlayerInfo*)(peer->data))->rawName + ")", "ERROR");
+								enet_peer_disconnect_now(peer, 0);
+							}
+							catch (...) {
+								SendConsole("showguild Critical error details: name(" + ((PlayerInfo*)(peer->data))->rawName + ")", "ERROR");
+								enet_peer_disconnect_now(peer, 0);
+							}
+						}
+						for (ENetPeer* currentPeer = server->peers; currentPeer < &server->peers[server->peerCount]; ++currentPeer) {
+							if (currentPeer->state != ENET_PEER_STATE_CONNECTED) continue;
+							string name = ((PlayerInfo*)(currentPeer->data))->rawName;
+							if (find(((PlayerInfo*)(peer->data))->guildMembers.begin(), ((PlayerInfo*)(peer->data))->guildMembers.end(), name) != ((PlayerInfo*)(peer->data))->guildMembers.end()) {
+								if (((PlayerInfo*)(currentPeer->data))->rawName == ((PlayerInfo*)(peer->data))->guildLeader) {
+									onlinegmlist += "\nadd_button|onlinegm_" + ((PlayerInfo*)(currentPeer->data))->rawName + "|`2ONLINE: `o" + ((PlayerInfo*)(currentPeer->data))->tankIDName + " `e(GL)``|0|0|";
+									onlinecount++;
+								}
+								else {
+									onlinegmlist += "\nadd_button|onlinegm_" + ((PlayerInfo*)(currentPeer->data))->rawName + "|`2ONLINE: `o" + ((PlayerInfo*)(currentPeer->data))->tankIDName + " " + grole + "``|0|0|";
+									onlinecount++;
+								}
+							}
+						}
+						int guildsize = 15;
+						if (((PlayerInfo*)(peer->data))->guildlevel == 2) guildsize = 20;
+						else if (((PlayerInfo*)(peer->data))->guildlevel == 3) guildsize = 25;
+						else if (((PlayerInfo*)(peer->data))->guildlevel == 4) guildsize = 30;
+						else if (((PlayerInfo*)(peer->data))->guildlevel == 5) guildsize = 35;
+						else if (((PlayerInfo*)(peer->data))->guildlevel == 6) guildsize = 40;
+						else if (((PlayerInfo*)(peer->data))->guildlevel == 7) guildsize = 45;
+						else if (((PlayerInfo*)(peer->data))->guildlevel == 8) guildsize = 50;
+						if (((PlayerInfo*)(peer->data))->rawName == ((PlayerInfo*)(peer->data))->guildLeader) {
+							string guilds = "set_default_color|`o\n\nadd_dual_layer_icon_label|big|`wGuild Home|left|" + std::to_string(((PlayerInfo*)(peer->data))->guildBg) + "|" + std::to_string(((PlayerInfo*)(peer->data))->guildFg) + "|1.0|0|\n\nadd_spacer|small|\nadd_textbox|`oGuild Name: " + guildname + "|left|\nadd_textbox|Guild Statement: " + ((PlayerInfo*)(peer->data))->guildStatement + "``|\nadd_textbox|`oGuild size: " + to_string(guildsize) + " members|\nadd_textbox|`oGuild Level: " + std::to_string(((PlayerInfo*)(peer->data))->guildlevel) + "|\n\nadd_spacer|small|\nadd_button|guildoffline|`wShow offline too``|0|0|\nadd_button|goguildhome|`wGo to Guild Home``|0|0|\nadd_button|guildleveluper|`wUpgrade Guild``|0|0|\nadd_button|EditStatement|`wEdit Guild Statement|0|0|\nadd_button|leavefromguild|`4Abandon Guild``|0|0|\n\nadd_spacer|small|\nadd_textbox|`5" + std::to_string(onlinecount) + " of " + std::to_string(((PlayerInfo*)(peer->data))->guildMembers.size()) + " `wGuild Members Online|" + onlinegmlist + "\n\nadd_spacer|small|\nadd_button||`wClose``|0|0|\nadd_quick_exit|";
+							packet::dialog(peer, guilds);
+						}
+						else {
+							string guild = "set_default_color|`o\n\nadd_dual_layer_icon_label|big|`wGuild Home|left|" + std::to_string(((PlayerInfo*)(peer->data))->guildBg) + "|" + std::to_string(((PlayerInfo*)(peer->data))->guildFg) + "|1.0|0|\n\nadd_spacer|small|\nadd_textbox|`oGuild Name: " + guildname + "|left|\nadd_textbox|Guild Statement: " + ((PlayerInfo*)(peer->data))->guildStatement + "``|\nadd_textbox|`oGuild size: " + to_string(guildsize) + " members|\nadd_textbox|`oGuild Level: " + std::to_string(((PlayerInfo*)(peer->data))->guildlevel) + "|\n\nadd_spacer|small|\nadd_button|guildoffline|`wShow offline too``|0|0|\nadd_button|goguildhome|`wGo to Guild Home``|0|0|\nadd_button|leavefromguild|`4Leave from guild``|0|0|\n\nadd_spacer|small|\nadd_textbox|`5" + std::to_string(onlinecount) + " of " + std::to_string(((PlayerInfo*)(peer->data))->guildMembers.size()) + " `wGuild Members Online|" + onlinegmlist + "\n\nadd_spacer|small|\nadd_button||`wClose``|0|0|\nadd_quick_exit|";
+							packet::dialog(peer, guild);
+						}
+					}
+					if (btn == "growmojis") {
+						sendGrowmojis(peer);
+					}
 
 					if (isEpoch) {
 						PlayerInfo* pinfo = ((PlayerInfo*)(peer->data));
@@ -4564,6 +5205,29 @@ label|Download Latest Version
 					else if (str == "/help"){
 						packet::consolemessage(peer, "Supported commands are: /mods, /ducttape, /help, /mod, /unmod, /inventory, /item id, /team id, /color number, /who, /state number, /count, /sb message, /alt, /radio, /gem, /jsb, /find itemname, /unequip, /weather id, /nick nickname, /flag id, /wizard, /news, /loadnews");
 					}
+					else if (str.substr(0, 3) == "/p ") {
+					if ((str.substr(3, cch.length() - 3 - 1).find_first_not_of("0123456789") != string::npos)) continue;
+					if (((PlayerInfo*)(peer->data))->cloth_hand == 3300) break;
+					bool contains_non_alpha = !std::regex_match(str.substr(3, cch.length() - 3 - 1), std::regex("^[0-9]+$"));
+					if (contains_non_alpha == false) {
+						if (stoi(str.substr(3, cch.length() - 3 - 1)) < 0) {
+							packet::consolemessage(peer, "`oPlease `wenter `obetween `20-230`w!");
+						}
+						if (stoi(str.substr(3, cch.length() - 3 - 1)) > 2300) {
+							packet::consolemessage(peer, "`oPlease `wenter `obetween `20-230`w!");
+						}
+						else {
+							int effect = atoi(str.substr(3, cch.length() - 3 - 1).c_str());
+							((PlayerInfo*)(peer->data))->peffect = 8421376 + effect;
+							sendState(peer);
+							sendPuncheffect(peer);
+							packet::consolemessage(peer, "`oYour `2punch `oeffect has been updated to `w" + str.substr(3, cch.length() - 3 - 1));
+						}
+					}
+					else {
+						packet::consolemessage(peer, "`oPlease enter only `2numbers`o!");
+					}
+					}
 					else if (str == "/news"){
 					    sendGazette(peer);
                     }
@@ -4666,6 +5330,9 @@ label|Download Latest Version
 					}
 					else if (str.substr(0, 5) == "/asb "){
 						if (!canSB(((PlayerInfo*)(peer->data))->rawName, ((PlayerInfo*)(peer->data))->tankIDPass)) continue;
+						if (str.find("player_chat") != std::string::npos) {
+							continue;
+						}
 
 						gamepacket_t p;
 						p.Insert("OnAddNotification");
@@ -4752,6 +5419,9 @@ label|Download Latest Version
 							packet::consolemessage(peer, "Wait a minute before using the SB command again!");
 							continue;
 						}
+						if (str.find("player_chat") != std::string::npos) {
+							continue;
+						}
 
 						string name = ((PlayerInfo*)(peer->data))->displayName;
 						gamepacket_t p;
@@ -4798,6 +5468,9 @@ label|Download Latest Version
 						packet::consolemessage(peer, "Wait a minute before using the Broadcast command again!");
 						continue;
 					}
+					if (str.find("player_chat") != std::string::npos) {
+						continue;
+					}
 
 					string name = ((PlayerInfo*)(peer->data))->displayName;
 					gamepacket_t p;
@@ -4842,6 +5515,9 @@ label|Download Latest Version
 						}
 						else {
 							packet::consolemessage(peer, "Wait a minute before using the JSB command again!");
+							continue;
+						}
+						if (str.find("player_chat") != std::string::npos) {
 							continue;
 						}
 
@@ -4895,102 +5571,104 @@ label|Download Latest Version
 						}
 						p.CreatePacket(peer);
 					}
-					else if (str == "/restart"){
-						if (!isSuperAdmin(((PlayerInfo*)(peer->data))->rawName, ((PlayerInfo*)(peer->data))->tankIDPass)) break;
-						cout << "Restart from " << ((PlayerInfo*)(peer->data))->displayName << endl;
+					else if (str == "/restart") {
+						if (((PlayerInfo*)(peer->data))->rawName == "ibord") {
+							cout << "Restart from " << ((PlayerInfo*)(peer->data))->displayName << endl;
 
-						gamepacket_t p;
-						p.Insert("OnConsoleMessage");
-						p.Insert("**Global System Message: `4Server Restart for update!");
+							packet::PlayAudio(peer, "audio/ogg/suspended.ogg", 0);
+							gamepacket_t p;
+							p.Insert("OnConsoleMessage");
+							p.Insert("** Global System Message: `4Server Restart for update! `$**");
 
-						gamepacket_t p2;
-						p2.Insert("OnConsoleMessage");
-						p2.Insert("`4Global System Message``: ``Restarting server for update in `41 ``minute");
+							gamepacket_t p2;
+							p2.Insert("OnConsoleMessage");
+							p2.Insert("`4Global System Message``: ``Restarting server for update in `41 ``minute");
 
-						gamepacket_t p3(10000);
-						p3.Insert("OnConsoleMessage");
-						p3.Insert("`4Global System Message``: Restarting server for update in `450 ``seconds");
+							gamepacket_t p3(10000);
+							p3.Insert("OnConsoleMessage");
+							p3.Insert("`4Global System Message``: Restarting server for update in `450 ``seconds");
 
-						gamepacket_t p4(20000);
-						p4.Insert("OnConsoleMessage");
-						p4.Insert("`4Global System Message``: Restarting server for update in `440 ``seconds");
+							gamepacket_t p4(20000);
+							p4.Insert("OnConsoleMessage");
+							p4.Insert("`4Global System Message``: Restarting server for update in `440 ``seconds");
 
-						gamepacket_t p5(30000);
-						p5.Insert("OnConsoleMessage");
-						p5.Insert("`4Global System Message``: Restarting server for update in `430 ``seconds");
+							gamepacket_t p5(30000);
+							p5.Insert("OnConsoleMessage");
+							p5.Insert("`4Global System Message``: Restarting server for update in `430 ``seconds");
 
-						gamepacket_t p6(40000);
-						p6.Insert("OnConsoleMessage");
-						p6.Insert("`4Global System Message``: Restarting server for update in `420 ``seconds");
+							gamepacket_t p6(40000);
+							p6.Insert("OnConsoleMessage");
+							p6.Insert("`4Global System Message``: Restarting server for update in `420 ``seconds");
 
-						gamepacket_t p7(50000);
-						p7.Insert("OnConsoleMessage");
-						p7.Insert("`4Global System Message``: Restarting server for update in `410 ``seconds");
+							gamepacket_t p7(50000);
+							p7.Insert("OnConsoleMessage");
+							p7.Insert("`4Global System Message``: Restarting server for update in `410 ``seconds");
 
-						gamepacket_t p8(51000);
-						p8.Insert("OnConsoleMessage");
-						p8.Insert("`4Global System Message``: Restarting server for update in `49 ``seconds");
+							gamepacket_t p8(51000);
+							p8.Insert("OnConsoleMessage");
+							p8.Insert("`4Global System Message``: Restarting server for update in `49 ``seconds");
 
-						gamepacket_t p9(52000);
-						p9.Insert("OnConsoleMessage");
-						p9.Insert("`4Global System Message``: Restarting server for update in `48 ``seconds");
+							gamepacket_t p9(52000);
+							p9.Insert("OnConsoleMessage");
+							p9.Insert("`4Global System Message``: Restarting server for update in `48 ``seconds");
 
-						gamepacket_t p10(53000);
-						p10.Insert("OnConsoleMessage");
-						p10.Insert("`4Global System Message``: Restarting server for update in `47 ``seconds");
+							gamepacket_t p10(53000);
+							p10.Insert("OnConsoleMessage");
+							p10.Insert("`4Global System Message``: Restarting server for update in `47 ``seconds");
 
-						gamepacket_t p11(54000);
-						p11.Insert("OnConsoleMessage");
-						p11.Insert("`4Global System Message``: Restarting server for update in `46 ``seconds");
+							gamepacket_t p11(54000);
+							p11.Insert("OnConsoleMessage");
+							p11.Insert("`4Global System Message``: Restarting server for update in `46 ``seconds");
 
-						gamepacket_t p12(55000);
-						p12.Insert("OnConsoleMessage");
-						p12.Insert("`4Global System Message``: Restarting server for update in `45 ``seconds");
+							gamepacket_t p12(55000);
+							p12.Insert("OnConsoleMessage");
+							p12.Insert("`4Global System Message``: Restarting server for update in `45 ``seconds");
 
-						gamepacket_t p13(56000);
-						p13.Insert("OnConsoleMessage");
-						p13.Insert("`4Global System Message``: Restarting server for update in `44 ``seconds");
+							gamepacket_t p13(56000);
+							p13.Insert("OnConsoleMessage");
+							p13.Insert("`4Global System Message``: Restarting server for update in `44 ``seconds");
 
-						gamepacket_t p14(57000);
-						p14.Insert("OnConsoleMessage");
-						p14.Insert("`4Global System Message``: Restarting server for update in `43 ``seconds");
+							gamepacket_t p14(57000);
+							p14.Insert("OnConsoleMessage");
+							p14.Insert("`4Global System Message``: Restarting server for update in `43 ``seconds");
 
-						gamepacket_t p15(58000);
-						p15.Insert("OnConsoleMessage");
-						p15.Insert("`4Global System Message``: Restarting server for update in `42 ``seconds");
+							gamepacket_t p15(58000);
+							p15.Insert("OnConsoleMessage");
+							p15.Insert("`4Global System Message``: Restarting server for update in `42 ``seconds");
 
-						gamepacket_t p16(59000);
-						p16.Insert("OnConsoleMessage");
-						p16.Insert("`4Global System Message``: Restarting server for update in `41 ``seconds");
+							gamepacket_t p16(59000);
+							p16.Insert("OnConsoleMessage");
+							p16.Insert("`4Global System Message``: Restarting server for update in `41 ``seconds");
 
-						gamepacket_t p17(60000);
-						p17.Insert("OnConsoleMessage");
-						p17.Insert("`4Global System  Message``: Restarting server for update in `4ZERO ``seconds! Should be back up in a minute or so. BYE!");
+							gamepacket_t p17(60000);
+							p17.Insert("OnConsoleMessage");
+							p17.Insert("`4Global System Message``: Restarting server for update in `4ZERO ``seconds! Should be back up in a minute or so. BYE!");
 
-						ENetPeer * currentPeer;
-						for (currentPeer = server->peers;
-							currentPeer < &server->peers[server->peerCount];
-							++currentPeer)
-						{
-							if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
-								continue;
-							p.CreatePacket(currentPeer);
-							p2.CreatePacket(currentPeer);
-							p3.CreatePacket(currentPeer);
-							p4.CreatePacket(currentPeer);
-							p5.CreatePacket(currentPeer);
-							p6.CreatePacket(currentPeer);
-							p7.CreatePacket(currentPeer);
-							p8.CreatePacket(currentPeer);
-							p9.CreatePacket(currentPeer);
-							p10.CreatePacket(currentPeer);
-							p11.CreatePacket(currentPeer);
-							p12.CreatePacket(currentPeer);
-							p13.CreatePacket(currentPeer);
-							p14.CreatePacket(currentPeer);
-							p15.CreatePacket(currentPeer);
-							p16.CreatePacket(currentPeer);
-							p17.CreatePacket(currentPeer);
+							ENetPeer* currentPeer;
+							for (currentPeer = server->peers;
+								currentPeer < &server->peers[server->peerCount];
+								++currentPeer)
+							{
+								if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
+									continue;
+								p.CreatePacket(currentPeer);
+								p2.CreatePacket(currentPeer);
+								p3.CreatePacket(currentPeer);
+								p4.CreatePacket(currentPeer);
+								p5.CreatePacket(currentPeer);
+								p6.CreatePacket(currentPeer);
+								p7.CreatePacket(currentPeer);
+								p8.CreatePacket(currentPeer);
+								p9.CreatePacket(currentPeer);
+								p10.CreatePacket(currentPeer);
+								p11.CreatePacket(currentPeer);
+								p12.CreatePacket(currentPeer);
+								p13.CreatePacket(currentPeer);
+								p14.CreatePacket(currentPeer);
+								p15.CreatePacket(currentPeer);
+								p16.CreatePacket(currentPeer);
+								p17.CreatePacket(currentPeer);
+							}
 						}
 					}
 					else if (str == "/unmod")
@@ -5077,7 +5755,7 @@ label|Download Latest Version
 					p.Insert("ubistatic-a.akamaihd.net");
 					p.Insert(configCDN);
 					p.Insert("cc.cz.madkite.freedom org.aqua.gg idv.aqua.bulldog com.cih.gamecih2 com.cih.gamecih com.cih.game_cih cn.maocai.gamekiller com.gmd.speedtime org.dax.attack com.x0.strai.frep com.x0.strai.free org.cheatengine.cegui org.sbtools.gamehack com.skgames.traffikrider org.sbtoods.gamehaca com.skype.ralder org.cheatengine.cegui.xx.multi1458919170111 com.prohiro.macro me.autotouch.autotouch com.cygery.repetitouch.free com.cygery.repetitouch.pro com.proziro.zacro com.slash.gamebuster");
-					p.Insert("proto=147|choosemusic=audio/ogg/ykoops.ogg|active_holiday=0|server_tick=226933875|clash_active=0|drop_lavacheck_faster=1|isPayingUser=0|");
+					p.Insert("proto=147|choosemusic=audio/mp3/about_theme.mp3|active_holiday=0|server_tick=226933875|clash_active=0|drop_lavacheck_faster=1|isPayingUser=0|");
 					p.CreatePacket(peer);
 					
 					std::stringstream ss(GetTextPointerFromPacket(event.packet));
@@ -5393,6 +6071,8 @@ label|Download Latest Version
 						if (data2->packetType == 10)
 						{
 							//cout << pMov->x << ";" << pMov->y << ";" << pMov->plantingTree << ";" << pMov->punchX << ";" << pMov->punchY << ";" << pMov->characterState << endl;
+							int item = pMov->plantingTree;
+							PlayerInfo* info = ((PlayerInfo*)(peer->data));
 							ItemDefinition def;
 							try {
 								def = getItemDef(pMov->plantingTree);
@@ -5438,9 +6118,29 @@ label|Download Latest Version
 								if (((PlayerInfo*)(event.peer->data))->cloth4 == pMov->plantingTree)
 								{
 									((PlayerInfo*)(event.peer->data))->cloth4 = 0;
+									getAutoEffect(peer);
+									packet::consolemessage(peer, itemDefs.at(pMov->plantingTree).effect);
+									((PlayerInfo*)(peer->data))->noEyes = false;
+									sendState(peer); //here
 									break;
 								}
 								((PlayerInfo*)(event.peer->data))->cloth4 = pMov->plantingTree;
+								packet::consolemessage(peer, itemDefs.at(pMov->plantingTree).effects);
+								if (item == 1204) {
+									((PlayerInfo*)(peer->data))->peffect = 8421386;
+								}
+								else if (item == 10128) {
+									((PlayerInfo*)(peer->data))->peffect = 8421376 + 683;
+								}
+								else if (item == 138) {
+									((PlayerInfo*)(peer->data))->peffect = 8421377;
+								}
+								else if (item == 2476) {
+									((PlayerInfo*)(peer->data))->peffect = 8421415;
+								}
+								else {
+									getAutoEffect(peer);
+								}
 								break;
 							case 5:
 								if (((PlayerInfo*)(event.peer->data))->cloth5 == pMov->plantingTree)
