@@ -52,3 +52,4 @@ https://bit.ly/guckproject
 - Growmojis Button in wrench
 - Show guild button
 - Fixed Sb Exploit (aka player_chat=)
+- Added /p
