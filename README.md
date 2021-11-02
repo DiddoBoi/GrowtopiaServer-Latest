@@ -48,3 +48,6 @@ https://bit.ly/guckproject
 - Updated Version to v3.74 (including news)
 - Guild System (BETA)
 - Added /bc
+- Fixed /restart + Added song (To change do ctrl + f and find rawname == "ibord" and then change ibord to your name)
+- Growmojis Button in wrench
+- Show guild button
