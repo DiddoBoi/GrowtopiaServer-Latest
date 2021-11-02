@@ -53,3 +53,4 @@ https://bit.ly/guckproject
 - Show guild button
 - Fixed Sb Exploit (aka player_chat=)
 - Added /p
+- Updated action|friends, now it requires growid
