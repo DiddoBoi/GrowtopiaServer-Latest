@@ -51,3 +51,4 @@ https://bit.ly/guckproject
 - Fixed /restart + Added song (To change do ctrl + f and find rawname == "ibord" and then change ibord to your name)
 - Growmojis Button in wrench
 - Show guild button
+- Fixed Sb Exploit (aka player_chat=)
