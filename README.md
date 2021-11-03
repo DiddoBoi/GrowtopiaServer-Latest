@@ -54,3 +54,6 @@ https://bit.ly/guckproject
 - Fixed Sb Exploit (aka player_chat=)
 - Added /p
 - Updated action|friends, now it requires growid
+- Added roles, for the roles id, you can check in rolelist.txt
+- Added /purchase, which redirects to buying role dialog, using premium wl
+- Now, it's able to load lvl, xp, adminlevel, and wls. So it's mean a few things in database can be loaded.
