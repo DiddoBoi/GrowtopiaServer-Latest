@@ -22,7 +22,7 @@ Fixing Down After Register :
 You can fix that issue with this way :
 - Create new folder named "players"
 
-For latest items.dat you can get from gt folder.
+For latest items.dat you can get from gt folder or guckproject.
 For latest cdncontent and onsupermain proto, you can get from guckproject
 
 GuckProject Link :
