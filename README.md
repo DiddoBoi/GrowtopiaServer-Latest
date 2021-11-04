@@ -4,7 +4,7 @@
 - Fixed Registration issue
 - Re-designed /find command UI
 
-Credit : GrowtopiaNoobs, Tianvan, GuckTubeYT, LyteVV, and Ipadtopia
+Credit : GrowtopiaNoobs, Tianvan, GuckTubeYT, LyteVV, GTRA Owner, and Ipadtopia
 
 Additional Note :
 - This source doesn't require coredata.txt
