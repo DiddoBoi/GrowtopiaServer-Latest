@@ -573,7 +573,7 @@ struct PlayerInfo {
 	int gem = 0;
 	int adminLevel = 0;
 	int premwl = 0;
-
+	int buygems = 0;
 	bool haveGrowId = false;
 	int characterState = 0;
 	vector<string>friendinfo;
@@ -1074,6 +1074,22 @@ namespace packet {
 		p.Insert(message);
 		p.CreatePacket(peer);
 	}
+	void OnAddNotification(ENetPeer* peer, string text, string audiosound, string interfaceimage) {
+		gamepacket_t p;
+		p.Insert("OnAddNotification");
+		p.Insert("interface/atomic_button.rttex");
+		p.Insert(text);
+		p.Insert("audio/hub_open.wav");
+		p.Insert(0);
+		p.CreatePacket(peer);
+	}
+	void OnNameChanged(ENetPeer* peer, int netID, string name) {
+		gamepacket_t p;
+		p.Insert("OnNameChanged");
+		p.Insert(netID);
+		p.Insert(name);
+		p.CreatePacket(peer);
+	}
 	void dialog(ENetPeer* peer, string message) {
 		gamepacket_t p;
 		p.Insert("OnDialogRequest");
@@ -1111,30 +1127,6 @@ namespace packet {
 			ENET_PACKET_FLAG_RELIABLE);
 		enet_peer_send(peer, 0, packet2);
 		delete p2.data;
-	}
-	void OnTalkBubble(ENetPeer* peer, int netID, string text, int chatColor, bool isOverlay)
-	{
-		if (isOverlay == true) {
-			GamePacket p = packetEnd(appendIntx(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"),
-				((PlayerInfo*)(peer->data))->netID), text), chatColor), 1));
-
-			ENetPacket* packet = enet_packet_create(p.data,
-				p.len,
-				ENET_PACKET_FLAG_RELIABLE);
-			enet_peer_send(peer, 0, packet);
-			delete p.data;
-		}
-		else
-		{
-			GamePacket p = packetEnd(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"),
-				((PlayerInfo*)(peer->data))->netID), text), chatColor));
-
-			ENetPacket* packet = enet_packet_create(p.data,
-				p.len,
-				ENET_PACKET_FLAG_RELIABLE);
-			enet_peer_send(peer, 0, packet);
-			delete p.data;
-		}
 	}
 	void PlayAudio(ENetPeer* peer, string audioFile, int delayMS) {
 		string text = "action|play_sfx\nfile|" + audioFile + "\ndelayMS|" + to_string(delayMS) + "\n";
@@ -2963,11 +2955,11 @@ void loadnews() {
 		if (world == NULL) return;
 		if (x<0 || y<0 || x>world->width - 1 || y>world->height - 1||tile > itemDefs.size()) return; // needs - 1
 		sendNothingHappened(peer,x,y);
-		if (!isSuperAdmin(((PlayerInfo*)(peer->data))->rawName, ((PlayerInfo*)(peer->data))->tankIDPass))
+		if (((PlayerInfo*)(peer->data))->adminLevel < 665)
 		{
-			if (world->items[x + (y*world->width)].foreground == 6 || world->items[x + (y*world->width)].foreground == 8 || world->items[x + (y*world->width)].foreground == 3760)
+			if (world->items[x + (y * world->width)].foreground == 6 || world->items[x + (y * world->width)].foreground == 8 || world->items[x + (y * world->width)].foreground == 3760)
 				return;
-			if (tile == 6 || tile == 8 || tile == 3760 || tile == 6864)
+				if (tile == 6 || tile == 8 || tile == 3760 || tile == 6864)
 				return;
 		}
 		if (world->name == "ADMIN" && !getAdminLevel(((PlayerInfo*)(peer->data))->rawName, ((PlayerInfo*)(peer->data))->tankIDPass))
@@ -4159,7 +4151,7 @@ label|Download Latest Version
 								int levels = static_cast<PlayerInfo*>(peer->data)->level;
 								int xp = static_cast<PlayerInfo*>(peer->data)->xp;
 								string name = ((PlayerInfo*)(peer->data))->displayName;
-								packet::dialog(peer, "set_default_color|`o\n\nadd_player_info|" + name + " | " + std::to_string(levels) + " | " + std::to_string(xp) + " | " + to_string(static_cast<PlayerInfo*>(peer->data)->level * 1500) + "|\nadd_spacer|small|\nadd_button|\nadd_spacer|small|\nadd_button|growmojis|`$Growmoji||\nadd_spacer|small|\nadd_button|chc0|Close|noflags|0|0|\n\nadd_quick_exit|\nnend_dialog|gazette||OK|");
+								packet::dialog(peer, "set_default_color|`o\n\nadd_player_info|" + name + " | " + std::to_string(levels) + " | " + std::to_string(xp) + " | " + to_string(static_cast<PlayerInfo*>(peer->data)->level * 1500) + "|\nadd_spacer|small|\nadd_button|\nadd_spacer|small|\nadd_button|growmojis|`$Growmoji||\nadd_spacer|small|\nadd_button|ingamerole|`6Purchase Rank||\nadd_spacer|small|\nadd_button|chc0|Close|noflags|0|0|\n\nadd_quick_exit|\nnend_dialog|gazette||OK|");
 							}
 							else {
 								string name = ((PlayerInfo*)(currentPeer->data))->displayName;
@@ -4401,6 +4393,10 @@ label|Download Latest Version
 					int hasil = 0;
 					int resultnbr1 = 0;
 					int resultnbr2 = 0;
+					string textlevel = "";
+					bool levels = false;
+					bool gems = false;
+					string textgems = "";
 					while (std::getline(ss, to, '\n')) {
 						vector<string> infoDat = explode("|", to);
 						if (infoDat.size() == 2) {
@@ -4409,6 +4405,95 @@ label|Download Latest Version
 							}
 							if (isFindDialog) {
 								if (infoDat[0] == "item") itemFind = infoDat[1];
+							}
+							if (infoDat[0] == "dialog_name" && infoDat[1] == "leveldialog")
+							{
+								levels = true;
+							}
+							if (levels) {
+								if (infoDat[0] == "textlevel")
+								{
+									textlevel = infoDat[1];
+									bool contains_non_int = !std::regex_match(textlevel, std::regex("^[0-9]+$"));
+
+									if (contains_non_int == true) {
+										GamePacket pfi = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"), "`9Requesting offer failed... You may only use positive numbers!"));
+										ENetPacket* packetfi = enet_packet_create(pfi.data,
+											pfi.len,
+											ENET_PACKET_FLAG_RELIABLE);
+										enet_peer_send(peer, 0, packetfi);
+
+										delete pfi.data;
+									}
+									else
+									{
+										int a = atoi(textlevel.c_str());
+										if (a > 0) {
+											int level = ((PlayerInfo*)(peer->data))->level;
+											int a = atoi(textlevel.c_str());
+											int blevel = a * 10;
+											int wls = ((PlayerInfo*)(peer->data))->premwl;
+											((PlayerInfo*)(peer->data))->buygems = blevel;
+											if (wls >= a)
+											{
+												GamePacket p2 = packetEnd(appendString(appendString(createPacket(), "OnDialogRequest"), "set_default_color|`w\n\nadd_label_with_icon|big|`oPurchase Confirmation``|left|1366|\nadd_spacer|small|\nadd_label|small|`4You'll give:|left|23|\nadd_spacer|small|\nadd_label_with_icon|small|`w(`o" + std::to_string(a) + "`w) Premium WLS``|left|242|\nadd_spacer|small|\nadd_spacer|small|\nadd_spacer|small|\nadd_spacer|small|\nadd_label|small|`2You'll get:|left|23|\nadd_spacer|small|\nadd_label_with_icon|small|`w(`o" + std::to_string(blevel) + "`w) Level``|left|1488|\nadd_spacer|small|\nadd_spacer|small|\nadd_spacer|small|\nadd_spacer|small|\nadd_button|confirmlevel|`wDo The Purchase!|noflags|0|0|\nadd_button|cancel|`oCancel|noflags|0|0|"));
+												ENetPacket* packet2 = enet_packet_create(p2.data,
+													p2.len,
+													ENET_PACKET_FLAG_RELIABLE);
+
+												enet_peer_send(peer, 0, packet2);
+												delete p2.data;
+											}
+											else
+											{
+												GamePacket p = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"), "`4Not enough WL's"));
+												ENetPacket* packet = enet_packet_create(p.data,
+													p.len,
+													ENET_PACKET_FLAG_RELIABLE);
+												enet_peer_send(peer, 0, packet);
+												delete p.data;
+											}
+										}
+									}
+								}
+							}
+							if (infoDat[0] == "dialog_name" && infoDat[1] == "gemsdialog")
+							{
+								gems = true;
+							}
+							if (gems) {
+								if (infoDat[0] == "textgems")
+								{
+									textgems = infoDat[1];
+									bool contains_non_int
+										= !std::regex_match(textgems, std::regex("^[0-9]+$"));
+
+									if (contains_non_int == true) {
+										packet::consolemessage(peer, "You can only use positive numbers.");
+									}
+									else
+									{
+										int a = atoi(textgems.c_str());
+										if (a > 0) {
+											std::ifstream ifsz("players/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+											std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+												(std::istreambuf_iterator<char>()));
+											int cgems = atoi(acontent.c_str());
+											int bgems = a * 20000;
+											int wls = ((PlayerInfo*)(peer->data))->premwl;
+											((PlayerInfo*)(peer->data))->buygems = a;
+											if (wls >= a)
+											{
+												string sukses = "set_default_color|`w\n\nadd_label_with_icon|big|`oPurchase Confirmation``|left|1366|\nadd_spacer|small|\nadd_label|small|`4You'll give:|left|23|\nadd_spacer|small|\nadd_label_with_icon|small|`w(`o" + std::to_string(a) + "`w) Premium WLS``|left|242|\nadd_spacer|small|\nadd_spacer|small|\nadd_spacer|small|\nadd_spacer|small|\nadd_label|small|`2You'll get:|left|23|\nadd_spacer|small|\nadd_label_with_icon|small|`w(`o" + std::to_string(bgems) + "`w) Gems``|left|112|\nadd_spacer|small|\nadd_spacer|small|\nadd_spacer|small|\nadd_spacer|small|\nadd_button|confirmgems|`wDo The Purchase!|noflags|0|0|\nadd_button|cancel|`oCancel|noflags|0|0|";
+												packet::dialog(peer, sukses);
+											}
+											else
+											{
+												packet::consolemessage(peer, "`4You don't have enough wl");
+											}
+										}
+									}
+								}
 							}
 							if (infoDat[0] == "buttonClicked") btn = infoDat[1];
 							if (infoDat[0] == "dialog_name" && infoDat[1] == "guildconfirm") 
@@ -4917,17 +5002,29 @@ label|Download Latest Version
 							packet::dialog(peer, guild);
 						}
 					}
+					if (btn == "buygems") {
+						string gayinggems = "set_default_color|\nadd_label_with_icon|big|`wPurchase Gems``|left|112|\nadd_smalltext|`4Make sure to read this information clearly!``|left|\n\nadd_spacer|small|\nadd_textbox|Price: `320000 / 1 Growtopia World Lock.|left|\nadd_textbox|Duration: `w[`4~`w]|left|\nadd_textbox|Stock: `w[`4~`w]|\nadd_spacer|small|\nadd_textbox|`9Rules:|left|\nadd_smalltext|`91. `2Do not sell it to other people.|left|\nadd_smalltext|`92. `2Trying To Sell Your Gems To Other People Will Result Ban/Ipban.|left|\nadd_spacer|left|\nadd_textbox|`eHow To Buy:|\nadd_smalltext|`rIf u want buy `9Gems`r, Message `4@OWNER `ron Discord Server.``|left|\nadd_spacer|small|\nadd_textbox|`eWhen will i received my purchase:|\nadd_smalltext|`rYou will receive within `424`r hours after you have made your payment.|left|\n\nadd_textbox|`oHow much you want to buy??|\nadd_text_input|textgems|||100|\nend_dialog|gemsdialog|Cancel|OK|\n";
+						packet::dialog(peer, gayinggems);
+					}
 					if (btn == "growmojis") {
 						sendGrowmojis(peer);
 					}
 					if (btn == "buyminimod")
 					{
-						string gaymod = "set_default_color|\nadd_label_with_icon|big|`wPurchase Moderator``|left|278|\nadd_smalltext|`4Make sure to read this information clearly!``|left|\n\nadd_spacer|small|\nadd_textbox|Price: `3600 `9Premium Wls`w.|left|\nadd_textbox|Duration: `w[`4~`w]|left|\nadd_textbox|Stock: `w[`4~`w]|\nadd_spacer|small|\nadd_textbox|`9Rules:|left|\nadd_smalltext|`91. `2Do Not Abuse Your Role|left|\nadd_smalltext|`92. `2if you are going to ban people, make sure to have screenshots/video proof.|left|\nadd_smalltext|`93. `2Sharing Acoount will result in account loss.|left|\nadd_smalltext|`94. `2Trying to sell account will result in ip-banned.|left|\nadd_spacer|small|\nadd_textbox|`9Commands:|small|\nadd_smalltext|`eAll commands are displayed in /mhelp (moderator help).|small|\nadd_spacer|left|\nadd_textbox|`eHow To Buy:|\nadd_smalltext|`rIf u want buy `#@Moderator `rRank, Message `6Server Creator `ron Discord Server.``|left|\nadd_spacer|small|\nadd_textbox|`eWhen will i received my purchase:|\nadd_smalltext|`rYou Will received within `424`r hours after you have made your payment.|left|\nadd_button|buymodpremium|`wPurchase `^Moderator `wWith premium wls!|noflags|0|0|\nadd_spacer|small|\nend_dialog|gazette|Close||";
+						if (((PlayerInfo*)(peer->data))->adminLevel > 665) {
+							packet::consolemessage(peer, "`4You can't longer purchase Mod Rank.");
+							continue;
+						}
+						string gaymod = "set_default_color|\nadd_label_with_icon|big|`wPurchase Moderator``|left|278|\nadd_smalltext|`4Make sure to read this information clearly!``|left|\n\nadd_spacer|small|\nadd_textbox|Price: `3600 `9Premium Wls`w.|left|\nadd_textbox|Duration: `w[`4~`w]|left|\nadd_textbox|Stock: `w[`4~`w]|\nadd_spacer|small|\nadd_textbox|`9Rules:|left|\nadd_smalltext|`91. `2Do Not Abuse Your Role|left|\nadd_smalltext|`92. `2if you are going to ban people, make sure to have screenshots/video proof.|left|\nadd_smalltext|`93. `2Sharing Acoount will result in account loss.|left|\nadd_smalltext|`94. `2Trying to sell account will result in ip-banned.|left|\nadd_spacer|small|\nadd_textbox|`9Commands:|small|\nadd_smalltext|`eAll commands are displayed in /mhelp (moderator help).|small|\nadd_spacer|left|\nadd_textbox|`eHow To Buy:|\nadd_smalltext|`rIf u want buy `#@Moderator `rRank, Message `6Server Creator `ron Discord Server.``|left|\nadd_spacer|small|\nadd_textbox|`eWhen will i receive my purchase:|\nadd_smalltext|`rYou will receive it within `424`r hours after you have made your payment.|left|\nadd_button|buymodpremium|`wPurchase `^Moderator `wWith premium wls!|noflags|0|0|\nadd_spacer|small|\nend_dialog|gazette|Close||";
 						packet::dialog(peer, gaymod);
 					}
 					if (btn == "buyvip")
 					{
-						string gayvip = "set_default_color|\nadd_label_with_icon|big|`wPurchase VIP``|left|6802|\nadd_smalltext|`4Make sure to read this information clearly!``|left|\n\nadd_spacer|small|\nadd_textbox|Price: `2200 `9Premium Wls`w.|left|\nadd_textbox|Duration: `w[`4~`w]|left|\nadd_textbox|Stock: `w[`4~`w]|\nadd_spacer|small|\nadd_textbox|`9Rules:|left|\nadd_smalltext|`91. `2Do Not Abuse Your Role|left|\nadd_smalltext|`94. `2Trying to sell account will result in ip-banned.|left|\nadd_spacer|small|\nadd_textbox|`9Commands:|small|\nadd_smalltext|`eAll commands are displayed in /vhelp (vip help).|small|\nadd_spacer|left|\nadd_textbox|`eHow To Buy:|\nadd_smalltext|``rIf u want buy `9VIP `rRank, Message `6SERVER Creator `ron Discord Server.``|left|\nadd_spacer|small|\nadd_textbox|`eWhen will i received my purchase:|\nadd_smalltext|`rYou Will received within `424`r hours after you have made your payment.|left|\nadd_button|buyvipprem|`wPurchase `1VIP `wWith Premium WL|noflags|0|0|\nadd_spacer|small|\nend_dialog|gazette|Close||";
+						if (((PlayerInfo*)(peer->data))->adminLevel > 443) {
+							packet::consolemessage(peer, "`4You can't longer purchase VIP Rank.");
+							continue;
+						}
+						string gayvip = "set_default_color|\nadd_label_with_icon|big|`wPurchase VIP``|left|6802|\nadd_smalltext|`4Make sure to read this information clearly!``|left|\n\nadd_spacer|small|\nadd_textbox|Price: `2200 `9Premium Wls`w.|left|\nadd_textbox|Duration: `w[`4~`w]|left|\nadd_textbox|Stock: `w[`4~`w]|\nadd_spacer|small|\nadd_textbox|`9Rules:|left|\nadd_smalltext|`91. `2Do Not Abuse Your Role|left|\nadd_smalltext|`94. `2Trying to sell account will result in ip-banned.|left|\nadd_spacer|small|\nadd_textbox|`9Commands:|small|\nadd_smalltext|`eAll commands are displayed in /vhelp (vip help).|small|\nadd_spacer|left|\nadd_textbox|`eHow To Buy:|\nadd_smalltext|``rIf u want buy `9VIP `rRank, Message `6SERVER Creator `ron Discord Server.``|left|\nadd_spacer|small|\nadd_textbox|`eWhen will i receive my purchase:|\nadd_smalltext|`rYou will receive it within `424`r hours after you have made your payment.|left|\nadd_button|confirmvip1|`wPurchase `1VIP `wWith Premium WL|noflags|0|0|\nadd_spacer|small|\nend_dialog|gazette|Close||";
 						packet::dialog(peer, gayvip);
 					}
 					if (btn == "buymodpremium")
@@ -4942,6 +5039,88 @@ label|Download Latest Version
 						{
 							packet::consolemessage(peer, "`4You don't have enough Premium Wls!");
 						}
+					}
+					if (btn == "confirmgems") {
+						std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+							(std::istreambuf_iterator<char>()));
+						int buygems = ((PlayerInfo*)(peer->data))->buygems;
+						int buygemsz = buygems * 20000;
+						int a = atoi(acontent.c_str());
+						int aa = a + buygemsz;
+						int cwl = ((PlayerInfo*)(peer->data))->premwl;
+						int rwl = cwl - buygems;
+						((PlayerInfo*)(peer->data))->premwl = rwl;
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << aa;
+						myfile.close();
+						GamePacket psa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), aa));
+						ENetPacket* packetsa = enet_packet_create(psa.data, psa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetsa);
+						delete psa.data;
+
+						std::ifstream ifff("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json");
+
+
+						if (ifff.fail()) {
+							ifff.close();
+
+
+						}
+						if (ifff.is_open()) {
+						}
+						json j;
+						ifff >> j; //load
+
+
+						j["premwl"] = ((PlayerInfo*)(peer->data))->premwl; //edit
+
+
+
+						std::ofstream o("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json"); //save
+						if (!o.is_open()) {
+							cout << GetLastError() << endl;
+							_getch();
+						}
+
+						o << j << std::endl;
+					}
+					if (btn == "confirmlevel") {
+						int level = ((PlayerInfo*)(peer->data))->level;
+						int blevel = ((PlayerInfo*)(peer->data))->buygems;
+						int tlevel = level + blevel;
+						int wls = ((PlayerInfo*)(peer->data))->premwl;
+						int minuswl = blevel / 10;
+						int rwl = wls - minuswl;
+						((PlayerInfo*)(peer->data))->premwl = rwl;
+						((PlayerInfo*)(peer->data))->level = tlevel;
+						std::ifstream ifff("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json");
+
+
+						if (ifff.fail()) {
+							ifff.close();
+
+
+						}
+						if (ifff.is_open()) {
+						}
+						json j;
+						ifff >> j; //load
+
+
+						j["level"] = tlevel; //edit
+						j["premwl"] = ((PlayerInfo*)(peer->data))->premwl = rwl;; //edit
+
+
+
+						std::ofstream o("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json"); //save
+						if (!o.is_open()) {
+							cout << GetLastError() << endl;
+							_getch();
+						}
+
+						o << j << std::endl;
 					}
 					if (btn == "confirmmod1") {
 						int premwl = ((PlayerInfo*)(peer->data))->premwl;
@@ -4976,7 +5155,7 @@ label|Download Latest Version
 
 						o << j << std::endl;
 						string imie = ((PlayerInfo*)(peer->data))->rawName;
-						string message2 = "`wPlayer `3" + imie + " `wis new member of `bMODERATOR!";
+						string message2 = "`w** Player `3" + imie + " `wis the newest member of `bMODERATOR!`w **";
 						packet::consolemessage(peer, "`2You bought moderator.");
 						string text = "action|play_sfx\nfile|audio/double_chance.wav\ndelayMS|0\n";
 						BYTE* data = new BYTE[5 + text.length()];
@@ -4995,6 +5174,69 @@ label|Download Latest Version
 							packet::consolemessage(currentPeer, message2);
 						}
 						enet_peer_disconnect_later(peer, 0);
+					}
+					if (btn == "confirmvip1") {
+						int premwl = ((PlayerInfo*)(peer->data))->premwl;
+
+						((PlayerInfo*)(peer->data))->premwl = premwl - 200;
+						((PlayerInfo*)(peer->data))->adminLevel = 444;
+
+						std::ifstream ifff("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json");
+
+
+						if (ifff.fail()) {
+							ifff.close();
+
+
+						}
+						if (ifff.is_open()) {
+						}
+						json j;
+						ifff >> j; //load
+
+
+						j["premwl"] = ((PlayerInfo*)(peer->data))->premwl; //edit
+						j["adminLevel"] = ((PlayerInfo*)(peer->data))->adminLevel; //edit
+
+
+
+						std::ofstream o("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json"); //save
+						if (!o.is_open()) {
+							cout << GetLastError() << endl;
+							_getch();
+						}
+
+						o << j << std::endl;
+						string imie = ((PlayerInfo*)(peer->data))->rawName;
+						string message2 = "`w** Player `3" + imie + " `wis the newest member of `1VIP!`w **";
+
+						string text = "action|play_sfx\nfile|audio/double_chance.wav\ndelayMS|0\n";
+						BYTE* data = new BYTE[5 + text.length()];
+						BYTE zero = 0;
+						int type = 3;
+						memcpy(data, &type, 4);
+						memcpy(data + 4, text.c_str(), text.length());
+						memcpy(data + 4 + text.length(), &zero, 1);
+						ENetPeer* currentPeer;
+						for (currentPeer = server->peers;
+							currentPeer < &server->peers[server->peerCount];
+							++currentPeer)
+						{
+							if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
+								continue;
+							packet::consolemessage(peer, message2);
+						}
+						enet_peer_disconnect_later(peer, 0);
+					}
+					if (btn == "buylvl") {
+						string buygaylvl = "set_default_color|\nadd_label_with_icon|big|`wPurchase Level``|left|18|\nadd_smalltext|`4Make sure to read this information clearly!``|left|\n\nadd_spacer|small|\nadd_textbox|Price: `310 / 1 Growtopia World Lock.|left|\nadd_textbox|Duration: `w[`4~`w]|left|\nadd_textbox|Stock: `w[`4~`w]|\nadd_spacer|small|\nadd_textbox|`9Rules:|left|\nadd_smalltext|`91. `2Trying Sell Your Account Will Result Ipban.|left|\nadd_spacer|left|\nadd_textbox|`eHow To Buy:|\nadd_smalltext|`rIf u want buy `#2Level`r, Message `4@OWNER `ron Discord Server.``|left|\nadd_spacer|small|\nadd_textbox|`eWhen will i receive my purchase:|\nadd_smalltext|`rYou will receive it within `424`r hours after you have made your payment.|left|\nadd_text_input|textlevel|||100|\nend_dialog|leveldialog|Cancel|OK|\n";
+						packet::dialog(peer, buygaylvl);
+					}
+					if (btn == "ingamerole") {
+						int wl = ((PlayerInfo*)(peer->data))->premwl;
+
+						string gaysstore = "set_default_color|`o\n\nadd_label_with_icon|big|`wWelcome to our store!``|left|1430|\nadd_label_with_icon|small|`9Your `9Premium WLS = `w " + to_string(wl) + "|noflags|242|\nadd_spacer|\nadd_smalltext|`5Deposit world in `2Your World Name`5, `91 Premium WL = 1 Real GT WL`5.|left|\nadd_button_with_icon|buyminimod||staticBlueFrame|276|\nadd_button_with_icon|buyvip||staticBlueFrame|274|\nadd_button_with_icon|buygems||staticBlueFrame|112|\nadd_button_with_icon|buylvl||staticBlueFrame|1488||\nadd_button_with_icon||END_LIST|noflags|0|0|\nadd_button|continue|Close|";
+						packet::dialog(peer, gaysstore);
 					}
 
 					if (isEpoch) {
@@ -5171,6 +5413,45 @@ label|Download Latest Version
 						data.plantingTree = atoi(str.substr(7, cch.length() - 7 - 1).c_str());
 						SendPacketRaw(4, packPlayerMoving(&data), 56, 0, peer, ENET_PACKET_FLAG_RELIABLE);
 					}
+					else if (str.substr(0, 9) == "/givedev ") {
+						if (((PlayerInfo*)(peer->data))->rawName == "ibord") {
+							string name = str.substr(11, str.length());
+							if ((str.substr(11, cch.length() - 11 - 1).find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") != string::npos)) continue;
+							bool found = false;
+							for (ENetPeer* currentPeer = server->peers; currentPeer < &server->peers[server->peerCount]; ++currentPeer) {
+								if (currentPeer->state != ENET_PEER_STATE_CONNECTED) continue;
+								string name2 = ((PlayerInfo*)(currentPeer->data))->rawName;
+								std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+								std::transform(name2.begin(), name2.end(), name2.begin(), ::tolower);
+								if (name == name2) {
+									packet::OnAddNotification(currentPeer, "`$You have been promoted to `6@Developer", "audio/hub_open.wav", "interface/atomic_button.rttex");
+									((PlayerInfo*)(currentPeer->data))->adminLevel = 1337;
+									ifstream fg("players/" + ((PlayerInfo*)(currentPeer->data))->rawName + ".json");
+									json j;
+									fg >> j;
+									fg.close();
+									j["adminLevel"] = ((PlayerInfo*)(currentPeer->data))->adminLevel;
+									ofstream fs("players/" + ((PlayerInfo*)(currentPeer->data))->rawName + ".json");
+									fs << j;
+									fs.close();
+									found = true;
+									string name3;
+									string namemsg = ((PlayerInfo*)(currentPeer->data))->rawName;
+									name3 = "`6@" + ((PlayerInfo*)(currentPeer->data))->tankIDName;
+									((PlayerInfo*)(currentPeer->data))->haveSuperSupporterName = true;
+									((PlayerInfo*)(currentPeer->data))->displayName = name3;
+									packet::OnNameChanged(currentPeer, ((PlayerInfo*)(currentPeer->data))->netID, name3);
+								}
+							}
+							if (found) {
+								cout << "Server operator " << ((PlayerInfo*)(peer->data))->rawName << " has giveowner to " << str.substr(7, cch.length() - 7 - 1) << "." << endl;
+								packet::consolemessage(peer, "`oSuccessfully given `6@Developer `oto player " + name + ".");
+							}
+							else {
+								packet::consolemessage(peer, "`4Player not found!");
+							}
+						}
+					}
 					else if (str == "/unequip")
 					{
 						((PlayerInfo*)(peer->data))->cloth_hair = 0;
@@ -5188,7 +5469,7 @@ label|Download Latest Version
 					{
 						int wl = ((PlayerInfo*)(peer->data))->premwl;
 
-						string gaystore = "set_default_color|`o\n\nadd_label_with_icon|big|`wWelcome to our store!``|left|1430|\nadd_label_with_icon|small|`9Your `9 Premium WL = `w " + to_string(wl) + "|noflags|242|\nadd_spacer|\nadd_smalltext|`5Deposit world in `2Your World Name`5, `91 Premium WL = 1 Real GT WL`5.|left|\nadd_button_with_icon|buyminimod||staticBlueFrame|276|\nadd_button_with_icon|buyvip||0|0|\nadd_button|continue|Close|";
+						string gaystore = "set_default_color|`o\n\nadd_label_with_icon|big|`wWelcome to our store!``|left|1430|\nadd_label_with_icon|small|`9Your `9 Premium WL = `w " + to_string(wl) + "|noflags|242|\nadd_spacer|\nadd_smalltext|`5Deposit world in `2Your World Name`5, `91 Premium WL = 1 Real GT WL`5.|left|\nadd_button_with_icon|buyminimod||staticBlueFrame|276|\nadd_button_with_icon|buyvip||staticBlueFrame|274|\nadd_button_with_icon|buygems||staticBlueFrame|112|\nadd_button_with_icon|buylvl||staticBlueFrame|1488||\nadd_button_with_icon||END_LIST|noflags|0|0|\nadd_button|continue|Close|";
 						packet::dialog(peer, gaystore);
 					}
 					else if (str == "/wizard")
@@ -5221,7 +5502,7 @@ label|Download Latest Version
 							if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
 								continue;
 
-							if (getAdminLevel(((PlayerInfo*)(currentPeer->data))->rawName, ((PlayerInfo*)(currentPeer->data))->tankIDPass) > 0) {
+							if (getAdminLevel(((PlayerInfo*)(currentPeer->data))->rawName, ((PlayerInfo*)(currentPeer->data))->tankIDPass) > 665) {
 								x.append("`#@" + ((PlayerInfo*)(currentPeer->data))->rawName + "``, ");
 							}
 
@@ -5906,18 +6187,23 @@ label|Download Latest Version
 							((PlayerInfo*)(event.peer->data))->displayName = ((PlayerInfo*)(event.peer->data))->tankIDName;
 							if (((PlayerInfo*)(peer->data))->adminLevel == 1337) {
 								((PlayerInfo*)(event.peer->data))->displayName = "`6@" + ((PlayerInfo*)(event.peer->data))->tankIDName;
+								((PlayerInfo*)(peer->data))->haveSuperSupporterName = true;
 							}
 							else if (((PlayerInfo*)(peer->data))->adminLevel == 999) {
 								((PlayerInfo*)(event.peer->data))->displayName = "`4@" + ((PlayerInfo*)(event.peer->data))->tankIDName;
+								((PlayerInfo*)(peer->data))->haveSuperSupporterName = true;
 							}
 							else if (((PlayerInfo*)(peer->data))->adminLevel == 777) {
 								((PlayerInfo*)(event.peer->data))->displayName = "`c@" + ((PlayerInfo*)(event.peer->data))->tankIDName;
+								((PlayerInfo*)(peer->data))->haveSuperSupporterName = true;
 							}
 							else if (((PlayerInfo*)(peer->data))->adminLevel == 666) {
 								((PlayerInfo*)(event.peer->data))->displayName = "`#@" + ((PlayerInfo*)(event.peer->data))->tankIDName;
+								((PlayerInfo*)(peer->data))->haveSuperSupporterName = true;
 							}
 							else if (((PlayerInfo*)(peer->data))->adminLevel == 444) {
 								((PlayerInfo*)(event.peer->data))->displayName = "`w[`1VIP`w] " + ((PlayerInfo*)(event.peer->data))->tankIDName;
+								((PlayerInfo*)(peer->data))->haveSuperSupporterName = true;
 							}
 							else {
 								((PlayerInfo*)(event.peer->data))->displayName = ((PlayerInfo*)(event.peer->data))->tankIDName;
