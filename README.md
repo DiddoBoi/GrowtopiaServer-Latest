@@ -62,3 +62,4 @@ https://bit.ly/guckproject
 - Updated premium wls system
 - Fixed Unbreakable bedrock
 - /givedev (BETA)
+- Updated /mods
