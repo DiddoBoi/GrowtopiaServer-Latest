@@ -57,3 +57,8 @@ https://bit.ly/guckproject
 - Added roles, for the roles id, you can check in rolelist.txt
 - Added /purchase, which redirects to buying role dialog, using premium wl
 - Now, it's able to load lvl, xp, adminlevel, and wls. So it's mean a few things in database can be loaded.
+- Updated Wrench
+- Updated /purchase
+- Updated premium wls system
+- Fixed Unbreakable bedrock
+- /givedev (BETA)
