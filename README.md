@@ -10,6 +10,11 @@ Additional Note :
 - This source doesn't require coredata.txt
 - This source requires items.dat
 
+How to activate Ssup name on role :
+- find any equipment
+- Equip it
+- Done.
+
 Fixing 404 Issue :
 You can fix 404 error with these ways :
 - Go to rgt and back
@@ -73,3 +78,4 @@ https://bit.ly/guckproject
 - Gem Saved
 - Added GrowPass purchasement via premium wl
 - Added GrowPass Role
+- Added Ssup on all role name (except player, read how to activate Ssup name in the top)
