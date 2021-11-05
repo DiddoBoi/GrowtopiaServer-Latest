@@ -18,6 +18,12 @@ You can fix 404 error with these ways :
 - The version
 - The items.dat or cdncontent that you are using right now is higher than your current gt version.
 
+Fixing Crashed Enet issue :
+- Missing Folder (you can fix it by adding the folder)
+
+Fixing Full Inventory when claim GrowPass :
+- /find and then get any item
+
 Fixing Down After Register :
 You can fix that issue with this way :
 - Create new folder named "players"
