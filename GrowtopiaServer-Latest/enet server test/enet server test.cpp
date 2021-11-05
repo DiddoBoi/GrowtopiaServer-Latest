@@ -588,7 +588,7 @@ struct PlayerInfo {
 	string currentWorld = "START";
 	string lastInfoname = "";
 	string lastgm = "";
-	short currentInventorySize = 0;
+	short currentInventorySize = 200;
 	string lastgmname = "";
 	string lastgmworld = "";
 	string guildlast = "";
@@ -1039,6 +1039,40 @@ int PlayerDB::playerRegister(string username, string password, string passwordve
 	j["joinguild"] = false;
 	j["premwl"] = 0;
 	o << j << std::endl;
+
+	std::ofstream oo("inventory/" + username + ".json");
+	if (!oo.is_open()) {
+		cout << GetLastError() << endl;
+		_getch();
+	}
+
+	json items;
+	json jjall = json::array();
+
+
+	json jj;
+	jj["aposition"] = 1;
+	jj["itemid"] = 18;
+	jj["quantity"] = 1;
+	jjall.push_back(jj);
+
+
+	jj["aposition"] = 2;
+	jj["itemid"] = 32;
+	jj["quantity"] = 1;
+	jjall.push_back(jj);
+
+	for (int i = 2; i < 200; i++)
+	{
+		jj["aposition"] = i + 1;
+		jj["itemid"] = 0;
+		jj["quantity"] = 0;
+		jjall.push_back(jj);
+	}
+
+	items["items"] = jjall;
+	oo << items << std::endl;
+
 	return 1;
 }
 
@@ -2098,23 +2132,21 @@ bool isHere(ENetPeer* peer, ENetPeer* peer2)
 
 void sendInventory(ENetPeer* peer, PlayerInventory inventory)
 {
+	string asdf2 = "0400000009A7379237BB2509E8E0EC04F8720B050000000000000000FBBB0000010000007D920100FDFDFDFD04000000040000000000000000000000000000000000";
 	int inventoryLen = inventory.items.size();
-	int packetLen = 66 + (inventoryLen * 4) + 4;
+	int packetLen = (asdf2.length() / 2) + (inventoryLen * 4) + 4;
 	BYTE* data2 = new BYTE[packetLen];
-	int MessageType = 0x4;
-	int PacketType = 0x9;
-	int NetID = -1;
-	int CharState = 0x8;
-
-	memset(data2, 0, packetLen);
-	memcpy(data2, &MessageType, 4);
-	memcpy(data2 + 4, &PacketType, 4);
-	memcpy(data2 + 8, &NetID, 4);
-	memcpy(data2 + 16, &CharState, 4);
+	for (int i = 0; i < asdf2.length(); i += 2)
+	{
+		char x = ch2n(asdf2[i]);
+		x = x << 4;
+		x += ch2n(asdf2[i + 1]);
+		memcpy(data2 + (i / 2), &x, 1);
+	}
 	int endianInvVal = _byteswap_ulong(inventoryLen);
-	memcpy(data2 + 66 - 4, &endianInvVal, 4);
-	endianInvVal = _byteswap_ulong(inventory.inventorySize);
-	memcpy(data2 + 66 - 8, &endianInvVal, 4);
+	memcpy(data2 + (asdf2.length() / 2) - 4, &endianInvVal, 4);
+	endianInvVal = _byteswap_ulong(((PlayerInfo*)(peer->data))->currentInventorySize);
+	memcpy(data2 + (asdf2.length() / 2) - 8, &endianInvVal, 4);
 	int val = 0;
 	for (int i = 0; i < inventoryLen; i++)
 	{
@@ -2123,13 +2155,14 @@ void sendInventory(ENetPeer* peer, PlayerInventory inventory)
 		val |= inventory.items.at(i).itemCount << 16;
 		val &= 0x00FFFFFF;
 		val |= 0x00 << 24;
-		memcpy(data2 + (i * 4) + 66, &val, 4);
+		memcpy(data2 + (i * 4) + (asdf2.length() / 2), &val, 4);
 	}
 	ENetPacket* packet3 = enet_packet_create(data2,
 		packetLen,
 		ENET_PACKET_FLAG_RELIABLE);
 	enet_peer_send(peer, 0, packet3);
 	delete data2;
+	//enet_host_flush(server);
 }
 
 void OnSetCurrentWeather(ENetPeer* peer, int weather) {
@@ -2148,6 +2181,144 @@ void OnSetCurrentWeather(ENetPeer* peer, int weather) {
 
 void sendGazette(ENetPeer* peer) {
 	std::ifstream news("news.txt");
+	std::stringstream buffer;
+	buffer << news.rdbuf();
+	std::string newsString(buffer.str());
+	packet::dialog(peer, newsString);
+}
+void SaveShopsItemMoreTimes(int fItemid, int fQuantity, ENetPeer* peer, bool& success)
+{
+	size_t invsizee = ((PlayerInfo*)(peer->data))->currentInventorySize;
+	bool invfull = false;
+	bool alreadyhave = false;
+
+
+	if (((PlayerInfo*)(peer->data))->inventory.items.size() == invsizee) {
+
+		GamePacket ps = packetEnd(appendString(appendString(createPacket(), "OnDialogRequest"), "add_label_with_icon|big|`4Whoops!|left|1432|\nadd_spacer|small|\nadd_textbox|`oSorry! Your inventory is full! You can purchase an inventory upgrade in the shop.|\nadd_spacer|small|\nadd_button|close|`5Close|0|0|"));
+		ENetPacket* packet = enet_packet_create(ps.data,
+			ps.len,
+			ENET_PACKET_FLAG_RELIABLE);
+		enet_peer_send(peer, 0, packet);
+		delete ps.data;
+
+
+		alreadyhave = true;
+	}
+
+	bool isFullStock = false;
+	bool isInInv = false;
+	for (int i = 0; i < ((PlayerInfo*)(peer->data))->inventory.items.size(); i++)
+	{
+
+		if (((PlayerInfo*)(peer->data))->inventory.items.at(i).itemID == fItemid && ((PlayerInfo*)(peer->data))->inventory.items.at(i).itemCount >= 200) {
+
+
+			GamePacket ps = packetEnd(appendString(appendString(createPacket(), "OnDialogRequest"), "add_label_with_icon|big|`4Whoops!|left|1432|\nadd_spacer|small|\nadd_textbox|`oSorry! You already have full stock of this item!|\nadd_spacer|small|\nadd_button|close|`5Close|0|0|"));
+			ENetPacket* packet = enet_packet_create(ps.data,
+				ps.len,
+				ENET_PACKET_FLAG_RELIABLE);
+			enet_peer_send(peer, 0, packet);
+			delete ps.data;
+
+
+			isFullStock = true;
+		}
+
+		if (((PlayerInfo*)(peer->data))->inventory.items.at(i).itemID == fItemid && ((PlayerInfo*)(peer->data))->inventory.items.at(i).itemCount < 200)	isInInv = true;
+
+	}
+
+	if (isFullStock == true || alreadyhave == true)
+	{
+		success = false;
+	}
+	else
+	{
+		success = true;
+
+		std::ifstream iffff("inventory/" + ((PlayerInfo*)(peer->data))->rawName + ".json");
+
+		json jj;
+
+		if (iffff.fail()) {
+			iffff.close();
+
+
+		}
+		if (iffff.is_open()) {
+
+
+		}
+
+		iffff >> jj; //load
+
+
+		std::ofstream oo("inventory/" + ((PlayerInfo*)(peer->data))->rawName + ".json");
+		if (!oo.is_open()) {
+			cout << GetLastError() << endl;
+			_getch();
+		}
+
+		//jj["items"][aposition]["aposition"] = aposition;
+
+		if (isInInv == false)
+		{
+
+			for (int i = 0; i < ((PlayerInfo*)(peer->data))->currentInventorySize; i++)
+			{
+				int itemid = jj["items"][i]["itemid"];
+				int quantity = jj["items"][i]["quantity"];
+
+				if (itemid == 0 && quantity == 0)
+				{
+					jj["items"][i]["itemid"] = fItemid;
+					jj["items"][i]["quantity"] = fQuantity;
+					break;
+				}
+
+			}
+			oo << jj << std::endl;
+
+
+			InventoryItem item;
+			item.itemID = fItemid;
+			item.itemCount = fQuantity;
+			((PlayerInfo*)(peer->data))->inventory.items.push_back(item);
+
+			sendInventory(peer, ((PlayerInfo*)(peer->data))->inventory);
+		}
+		else
+		{
+			for (int i = 0; i < ((PlayerInfo*)(peer->data))->currentInventorySize; i++)
+			{
+				int itemid = jj["items"][i]["itemid"];
+				int quantity = jj["items"][i]["quantity"];
+
+				if (itemid == fItemid)
+				{
+					jj["items"][i]["quantity"] = quantity + fQuantity;
+					break;
+				}
+
+			}
+			oo << jj << std::endl;
+
+
+			for (int i = 0; i < ((PlayerInfo*)(peer->data))->inventory.items.size(); i++)
+			{
+				if (((PlayerInfo*)(peer->data))->inventory.items.at(i).itemID == fItemid)
+				{
+					((PlayerInfo*)(peer->data))->inventory.items.at(i).itemCount += fQuantity;
+					sendInventory(peer, ((PlayerInfo*)(peer->data))->inventory);
+				}
+			}
+
+		}
+	}
+}
+void lvl1growpass(ENetPeer* peer) {
+	std::ifstream news("growpasses/lvl1.txt");
 	std::stringstream buffer;
 	buffer << news.rdbuf();
 	std::string newsString(buffer.str());
@@ -3555,6 +3726,10 @@ void loadnews() {
 			p = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"), "CP:_PL:0_OID:_CT:[W]_ `o<`w" + name + "`o> `1" + message));
 			p2 = packetEnd(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"), netID), "`1" + message), 0));
 		}
+		else if (((PlayerInfo*)(peer->data))->adminLevel == 111) {
+			p = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"), "CP:_PL:0_OID:_CT:[W]_ `o<`w" + name + "`o> `9" + message));
+			p2 = packetEnd(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"), netID), "`9" + message), 0));
+		}
 		else {
 			p = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"), "CP:_PL:0_OID:_CT:[W]_ `o<`w" + name + "`o> " + message));
 			p2 = packetEnd(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"), netID), message), 0));
@@ -4151,7 +4326,7 @@ label|Download Latest Version
 								int levels = static_cast<PlayerInfo*>(peer->data)->level;
 								int xp = static_cast<PlayerInfo*>(peer->data)->xp;
 								string name = ((PlayerInfo*)(peer->data))->displayName;
-								packet::dialog(peer, "set_default_color|`o\n\nadd_player_info|" + name + " | " + std::to_string(levels) + " | " + std::to_string(xp) + " | " + to_string(static_cast<PlayerInfo*>(peer->data)->level * 1500) + "|\nadd_spacer|small|\nadd_button|\nadd_spacer|small|\nadd_button|growmojis|`$Growmoji||\nadd_spacer|small|\nadd_button|ingamerole|`6Purchase Rank||\nadd_spacer|small|\nadd_button|chc0|Close|noflags|0|0|\n\nadd_quick_exit|\nnend_dialog|gazette||OK|");
+								packet::dialog(peer, "set_default_color|`o\n\nadd_player_info|" + name + " | " + std::to_string(levels) + " | " + std::to_string(xp) + " | " + to_string(static_cast<PlayerInfo*>(peer->data)->level * 1500) + "|\nadd_spacer|small|\nadd_button|\nadd_spacer|small|\nadd_button|growmojis|`$Growmojis|\nadd_spacer|small|\nadd_button|gpasslabel|`9Royal GrowPass||\nadd_spacer|small|\nadd_button|ingamerole|`6Purchase Rank||\nadd_spacer|small|\nadd_button|chc0|Close|noflags|0|0|\n\nadd_quick_exit|\nnend_dialog|gazette||OK|");
 							}
 							else {
 								string name = ((PlayerInfo*)(currentPeer->data))->displayName;
@@ -4914,6 +5089,11 @@ label|Download Latest Version
 
 						y << x << std::endl;
 					}
+					if (btn == "gpasslabel") {
+						string ezgpass = "set_default_color|`o\nadd_label_with_icon|big|`9GrowPasses``|left|10410|\nadd_spacer|small|\nadd_button|gpasslvl1|`9Level 1 GrowPass|\nadd_button|growpasslvl2|`9Level 2 GrowPass|\nadd_button|growpasslvl3|`9Level 3 GrowPass``|0|0|\nend_dialog|gazette|Close|";
+					    packet::dialog(peer, ezgpass);
+					}
+
 					if (btn == "showguild") {
 						string onlinegmlist = "";
 						string grole = "";
@@ -5018,6 +5198,40 @@ label|Download Latest Version
 						string gaymod = "set_default_color|\nadd_label_with_icon|big|`wPurchase Moderator``|left|278|\nadd_smalltext|`4Make sure to read this information clearly!``|left|\n\nadd_spacer|small|\nadd_textbox|Price: `3600 `9Premium Wls`w.|left|\nadd_textbox|Duration: `w[`4~`w]|left|\nadd_textbox|Stock: `w[`4~`w]|\nadd_spacer|small|\nadd_textbox|`9Rules:|left|\nadd_smalltext|`91. `2Do Not Abuse Your Role|left|\nadd_smalltext|`92. `2if you are going to ban people, make sure to have screenshots/video proof.|left|\nadd_smalltext|`93. `2Sharing Acoount will result in account loss.|left|\nadd_smalltext|`94. `2Trying to sell account will result in ip-banned.|left|\nadd_spacer|small|\nadd_textbox|`9Commands:|small|\nadd_smalltext|`eAll commands are displayed in /mhelp (moderator help).|small|\nadd_spacer|left|\nadd_textbox|`eHow To Buy:|\nadd_smalltext|`rIf u want buy `#@Moderator `rRank, Message `6Server Creator `ron Discord Server.``|left|\nadd_spacer|small|\nadd_textbox|`eWhen will i receive my purchase:|\nadd_smalltext|`rYou will receive it within `424`r hours after you have made your payment.|left|\nadd_button|buymodpremium|`wPurchase `^Moderator `wWith premium wls!|noflags|0|0|\nadd_spacer|small|\nend_dialog|gazette|Close||";
 						packet::dialog(peer, gaymod);
 					}
+					if (btn == "buygpass1")
+					{
+						if (((PlayerInfo*)(peer->data))->adminLevel > 110) {
+							packet::consolemessage(peer, "`4You can't longer purchase GrowPass.");
+							continue;
+						}
+						string gaypass = "set_default_color|\nadd_label_with_icon|big|`wPurchase GrowPass``|left|278|\nadd_smalltext|`4Make sure to read this information clearly!``|left|\n\nadd_spacer|small|\nadd_textbox|Price: `350 `9Premium Wls`w.|left|\nadd_textbox|Duration: `w[`4~`w]|left|\nadd_textbox|Stock: `w[`4~`w]|\nadd_spacer|small|\nadd_textbox|`9Rules:|left|\nadd_smalltext|`91. `2Do not sell your account.|left|\nadd_smalltext|`92. `2No WL Refund after buy.|left|\nadd_spacer|small|\nadd_textbox|`9Benefits:|small|\nadd_smalltext|`eYou can get Lvl 1 GrowPass Rewards.|small|\nadd_spacer|left|\nadd_textbox|`eHow To Buy:|\nadd_smalltext|`rIf u want buy `9GrowPass`w, Message `6Server Creator `ron Discord Server.``|left|\nadd_spacer|small|\nadd_textbox|`eWhen will i receive my purchase:|\nadd_smalltext|`rYou will receive it within `424`r hours after you have made your payment.|left|\nadd_button|buygrowpass1|`wPurchase `9GrowPass `wWith premium wls!|noflags|0|0|\nadd_spacer|small|\nend_dialog|gazette|Close||";
+						packet::dialog(peer, gaypass);
+					}
+					if (btn == "gpasslvl1") {
+						if (((PlayerInfo*)(peer->data))->adminLevel < 111) {
+							packet::consolemessage(peer, "`4You must purchase GrowPass first.");
+							continue;
+						}
+						if (((PlayerInfo*)(peer->data))->adminLevel > 111) {
+							packet::consolemessage(peer, "`4You must purchase GrowPass first.");
+							continue;
+						}
+						lvl1growpass(peer);
+					}
+					if (btn == "gpass1") {
+						if (((PlayerInfo*)(peer->data))->adminLevel = 111) {
+							string claimed = "false";
+							bool success = true;
+							SaveShopsItemMoreTimes(8552, 1, peer, success);
+							if (!success) break;
+							packet::SendTalkSelf(peer, "`2Successfully claimed Angel of Mercy's Wing.");
+							if (claimed == "true")
+							{
+								packet::consolemessage(peer, "`2You have claimed this reward before.");
+								break;
+							}
+						}
+					}
 					if (btn == "buyvip")
 					{
 						if (((PlayerInfo*)(peer->data))->adminLevel > 443) {
@@ -5034,6 +5248,19 @@ label|Download Latest Version
 						{
 							string buygaymod = "set_default_color|`w\n\nadd_label_with_icon|big|`oPurchase Confirmation``|left|1366|\nadd_spacer|small|\nadd_label|small|`4You'll give:|left|23|\nadd_spacer|small|\nadd_label_with_icon|small|`w(`o600`w) Premium WLS``|left|242|\nadd_spacer|small|\nadd_spacer|small|\nadd_spacer|small|\nadd_spacer|small|\nadd_label|small|`2You'll get:|left|23|\nadd_spacer|small|\nadd_label_with_icon|small|`w(`oPermanent`w) Moderator Role``|left|32|\nadd_spacer|small|\nadd_spacer|small|\nadd_spacer|small|\nadd_spacer|small|\nadd_button|confirmmod1|`wDo The Purchase!|noflags|0|0|\nadd_button|cancel|`oCancel|noflags|0|0|";
 							packet::dialog(peer, buygaymod);
+						}
+						else
+						{
+							packet::consolemessage(peer, "`4You don't have enough Premium Wls!");
+						}
+					}
+					if (btn == "buygrowpass1")
+					{
+						int premwl = ((PlayerInfo*)(peer->data))->premwl;
+						if (premwl >= 100)
+						{
+							string buygaypass1 = "set_default_color|`w\n\nadd_label_with_icon|big|`oPurchase Confirmation``|left|1366|\nadd_spacer|small|\nadd_label|small|`4You'll give:|left|23|\nadd_spacer|small|\nadd_label_with_icon|small|`w(`o100`w) Premium WLS``|left|242|\nadd_spacer|small|\nadd_spacer|small|\nadd_spacer|small|\nadd_spacer|small|\nadd_label|small|`2You'll get:|left|23|\nadd_spacer|small|\nadd_label_with_icon|small|`w(`oPermanent`w) GrowPass Role``|left|32|\nadd_spacer|small|\nadd_spacer|small|\nadd_spacer|small|\nadd_spacer|small|\nadd_button|confirmgpass1|`wDo The Purchase!|noflags|0|0|\nadd_button|cancel|`oCancel|noflags|0|0|";
+							packet::dialog(peer, buygaypass1);
 						}
 						else
 						{
@@ -5175,6 +5402,59 @@ label|Download Latest Version
 						}
 						enet_peer_disconnect_later(peer, 0);
 					}
+					if (btn == "confirmgpass1") {
+						int premwl = ((PlayerInfo*)(peer->data))->premwl;
+
+						((PlayerInfo*)(peer->data))->premwl = premwl - 100;
+						((PlayerInfo*)(peer->data))->adminLevel = 111;
+
+						std::ifstream ifff("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json");
+
+
+						if (ifff.fail()) {
+							ifff.close();
+
+
+						}
+						if (ifff.is_open()) {
+						}
+						json j;
+						ifff >> j; //load
+
+
+						j["premwl"] = ((PlayerInfo*)(peer->data))->premwl; //edit
+						j["adminLevel"] = ((PlayerInfo*)(peer->data))->adminLevel; //edit
+
+
+
+						std::ofstream o("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json"); //save
+						if (!o.is_open()) {
+							cout << GetLastError() << endl;
+							_getch();
+						}
+
+						o << j << std::endl;
+						string imie = ((PlayerInfo*)(peer->data))->rawName;
+						string message2 = "`w** Player `3" + imie + " `wis the newest member of `2GROWPASS!`w **";
+						packet::consolemessage(peer, "`2You bought GrowPass.");
+						string text = "action|play_sfx\nfile|audio/double_chance.wav\ndelayMS|0\n";
+						BYTE* data = new BYTE[5 + text.length()];
+						BYTE zero = 0;
+						int type = 3;
+						memcpy(data, &type, 4);
+						memcpy(data + 4, text.c_str(), text.length());
+						memcpy(data + 4 + text.length(), &zero, 1);
+						ENetPeer* currentPeer;
+						for (currentPeer = server->peers;
+							currentPeer < &server->peers[server->peerCount];
+							++currentPeer)
+						{
+							if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
+								continue;
+							packet::consolemessage(currentPeer, message2);
+						}
+						enet_peer_disconnect_later(peer, 0);
+					}
 					if (btn == "confirmvip1") {
 						int premwl = ((PlayerInfo*)(peer->data))->premwl;
 
@@ -5235,7 +5515,7 @@ label|Download Latest Version
 					if (btn == "ingamerole") {
 						int wl = ((PlayerInfo*)(peer->data))->premwl;
 
-						string gaysstore = "set_default_color|`o\n\nadd_label_with_icon|big|`wWelcome to our store!``|left|1430|\nadd_label_with_icon|small|`9Your `9Premium WLS = `w " + to_string(wl) + "|noflags|242|\nadd_spacer|\nadd_smalltext|`5Deposit world in `2Your World Name`5, `91 Premium WL = 1 Real GT WL`5.|left|\nadd_button_with_icon|buyminimod||staticBlueFrame|276|\nadd_button_with_icon|buyvip||staticBlueFrame|274|\nadd_button_with_icon|buygems||staticBlueFrame|112|\nadd_button_with_icon|buylvl||staticBlueFrame|1488||\nadd_button_with_icon||END_LIST|noflags|0|0|\nadd_button|continue|Close|";
+						string gaysstore = "set_default_color|`o\n\nadd_label_with_icon|big|`wWelcome to our store!``|left|1430|\nadd_label_with_icon|small|`9Your `9Premium WLS = `w " + to_string(wl) + "|noflags|242|\nadd_spacer|\nadd_smalltext|`5Deposit world in `2Your World Name`5, `91 Premium WL = 1 Real GT WL`5.|left|\nadd_button_with_icon|buyminimod||staticBlueFrame|276|\nadd_button_with_icon|buyvip||staticBlueFrame|274|\nadd_button_with_icon|buygpass1||staticBlueFrame|10410|\nadd_button_with_icon|buygems||staticBlueFrame|112|\nadd_button_with_icon|buylvl||staticBlueFrame|1488||\nadd_button_with_icon||END_LIST|noflags|0|0|\nadd_button|continue|Close|";
 						packet::dialog(peer, gaysstore);
 					}
 
@@ -5469,7 +5749,7 @@ label|Download Latest Version
 					{
 						int wl = ((PlayerInfo*)(peer->data))->premwl;
 
-						string gaystore = "set_default_color|`o\n\nadd_label_with_icon|big|`wWelcome to our store!``|left|1430|\nadd_label_with_icon|small|`9Your `9 Premium WL = `w " + to_string(wl) + "|noflags|242|\nadd_spacer|\nadd_smalltext|`5Deposit world in `2Your World Name`5, `91 Premium WL = 1 Real GT WL`5.|left|\nadd_button_with_icon|buyminimod||staticBlueFrame|276|\nadd_button_with_icon|buyvip||staticBlueFrame|274|\nadd_button_with_icon|buygems||staticBlueFrame|112|\nadd_button_with_icon|buylvl||staticBlueFrame|1488||\nadd_button_with_icon||END_LIST|noflags|0|0|\nadd_button|continue|Close|";
+						string gaystore = "set_default_color|`o\n\nadd_label_with_icon|big|`wWelcome to our store!``|left|1430|\nadd_label_with_icon|small|`9Your `9Premium WLS = `w " + to_string(wl) + "|noflags|242|\nadd_spacer|\nadd_smalltext|`5Deposit world in `2Your World Name`5, `91 Premium WL = 1 Real GT WL`5.|left|\nadd_button_with_icon|buyminimod||staticBlueFrame|276|\nadd_button_with_icon|buyvip||staticBlueFrame|274|\nadd_button_with_icon|buygpass1||staticBlueFrame|10410|\nadd_button_with_icon|buygems||staticBlueFrame|112|\nadd_button_with_icon|buylvl||staticBlueFrame|1488||\nadd_button_with_icon||END_LIST|noflags|0|0|\nadd_button|continue|Close|";
 						packet::dialog(peer, gaystore);
 					}
 					else if (str == "/wizard")
@@ -6183,6 +6463,18 @@ label|Download Latest Version
 							p->level = level;
 							p->xp = xp;
 							p->premwl = premwl;
+							std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+							std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+								(std::istreambuf_iterator<char>()));
+							int ac = atoi(acontent.c_str());
+							ofstream myfile;
+							myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+							myfile << ac;
+							myfile.close();
+							GamePacket psa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), ac));
+							ENetPacket* packetsa = enet_packet_create(psa.data, psa.len, ENET_PACKET_FLAG_RELIABLE);
+							enet_peer_send(peer, 0, packetsa);
+							delete psa.data;
 							packet::consolemessage(peer, "`rYou have successfully logged into your account!``");
 							((PlayerInfo*)(event.peer->data))->displayName = ((PlayerInfo*)(event.peer->data))->tankIDName;
 							if (((PlayerInfo*)(peer->data))->adminLevel == 1337) {
@@ -6203,6 +6495,10 @@ label|Download Latest Version
 							}
 							else if (((PlayerInfo*)(peer->data))->adminLevel == 444) {
 								((PlayerInfo*)(event.peer->data))->displayName = "`w[`1VIP`w] " + ((PlayerInfo*)(event.peer->data))->tankIDName;
+								((PlayerInfo*)(peer->data))->haveSuperSupporterName = true;
+							}
+							else if (((PlayerInfo*)(peer->data))->adminLevel == 111) {
+								((PlayerInfo*)(event.peer->data))->displayName = "`w[`2GrowPass`w] " + ((PlayerInfo*)(event.peer->data))->tankIDName;
 								((PlayerInfo*)(peer->data))->haveSuperSupporterName = true;
 							}
 							else {
