@@ -1,0 +1,15 @@
+add_label_with_icon|big|`9Level 1 GrowPass Reward``||10410|
+
+add_spacer|small|
+
+add_button_with_icon|gpass1||Staticblueframe|8552|1|
+
+add_button_with_icon|gpass2||Staticblueframe|1438|1|
+
+add_button_with_icon|gpass3||Staticblueframe|1204|1|
+
+add_button_with_icon|gpass4||Staticblueframe|5480|1|
+
+add_button_with_icon||END_LIST|noflags|0|0|
+
+add_button|close|Close|
