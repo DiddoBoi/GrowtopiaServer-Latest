@@ -63,3 +63,7 @@ https://bit.ly/guckproject
 - Fixed Unbreakable bedrock
 - /givedev (BETA)
 - Updated /mods
+- Added Custom GrowPass (can be found in wrench)
+- Gem Saved
+- Updated shop
+- Added GrowPass Role
