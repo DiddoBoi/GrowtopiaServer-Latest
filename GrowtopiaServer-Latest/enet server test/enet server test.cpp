@@ -737,11 +737,15 @@ struct WorldInfo {
 	WorldItem* items;
 	string owner = "";
 	bool isPublic=false;
+	bool isNuked = false;
+	int ownerID = 0;
+	bool isCasino = false;
 	vector<string> acclist;
 	int weather = 0;
 	bool ice = false;
 	bool land = false;
 	bool volcano = false;
+	bool online = false;
 
 	unsigned long currentItemUID = 1; //has to be 1 by default
 	vector<DroppedItem> droppedItems;
@@ -1035,6 +1039,16 @@ int PlayerDB::playerRegister(string username, string password, string passwordve
 	j["gem"] = 0;
 	j["level"] = 1;
 	j["xp"] = 0;
+	j["ClothBack"] = 0;
+	j["ClothHand"] = 0;
+	j["ClothFace"] = 0;
+	j["ClothShirt"] = 0;
+	j["ClothPants"] = 0;
+	j["ClothNeck"] = 0;
+	j["ClothHair"] = 0;
+	j["ClothFeet"] = 0;
+	j["ClothMask"] = 0;
+	j["ClothAnces"] = 0;
 	j["guild"] = "";
 	j["joinguild"] = false;
 	j["premwl"] = 0;
@@ -1211,18 +1225,18 @@ string getStrUpper(string txt) {
 AWorld WorldDB::get2(string name) {
 	if (worlds.size() > 200) {
 #ifdef TOTAL_LOG
-		cout << "Saving redundant worlds!" << endl;
+		cout << "[!] Saving redundant worlds!" << endl;
 #endif
 		saveRedundant();
 #ifdef TOTAL_LOG
-		cout << "Redundant worlds are saved!" << endl;
+		cout << "[!] Redundant worlds are saved!" << endl;
 #endif
 	}
 	AWorld ret;
 	name = getStrUpper(name);
 	if (name.length() < 1) throw 1; // too short name
 	for (char c : name) {
-		if ((c<'A' || c>'Z') && (c<'0' || c>'9'))
+		if ((c < 'A' || c>'Z') && (c < '0' || c>'9'))
 			throw 2; // wrong name
 	}
 	if (name == "EXIT") {
@@ -1246,16 +1260,21 @@ AWorld WorldDB::get2(string name) {
 		ifs >> j;
 		WorldInfo info;
 		info.name = j["name"].get<string>();
-		info.width = j["width"];
-		info.height = j["height"];
+		info.width = j["width"].get<int>();
+		info.height = j["height"].get<int>();
+		info.weather = j["weather"].get<int>();
+		for (int i = 0; i < j["access"].size(); i++) {
+			info.acclist.push_back(j["access"][i]);
+		}
 		info.owner = j["owner"].get<string>();
-		info.isPublic = j["isPublic"];
+		info.ownerID = j["ownerID"].get<int>();
+		info.isPublic = j["isPublic"].get<bool>();
 		json tiles = j["tiles"];
-		int square = info.width*info.height;
+		int square = info.width * info.height;
 		info.items = new WorldItem[square];
 		for (int i = 0; i < square; i++) {
-			info.items[i].foreground = tiles[i]["fg"];
-			info.items[i].background = tiles[i]["bg"];
+			info.items[i].foreground = tiles[i]["fg"].get<int>();
+			info.items[i].background = tiles[i]["bg"].get<int>();
 		}
 		worlds.push_back(info);
 		ret.id = worlds.size() - 1;
@@ -1290,16 +1309,21 @@ void WorldDB::flush(WorldInfo info)
 	j["name"] = info.name;
 	j["width"] = info.width;
 	j["height"] = info.height;
+	j["weather"] = info.weather;
+	j["isCasino"] = info.isCasino;
+	j["access"] = info.acclist;
 	j["owner"] = info.owner;
+	j["ownerID"] = info.ownerID;
 	j["isPublic"] = info.isPublic;
 	json tiles = json::array();
-	int square = info.width*info.height;
-	
+	int square = info.width * info.height;
+
 	for (int i = 0; i < square; i++)
 	{
 		json tile;
 		tile["fg"] = info.items[i].foreground;
 		tile["bg"] = info.items[i].background;
+		//tile["text"] = info.items[i].text;
 		tiles.push_back(tile);
 	}
 	j["tiles"] = tiles;
@@ -3139,19 +3163,195 @@ void loadnews() {
 				sendRoulete(peer, x, y);
 			return;
 		}
+		if (world->name != "ADMIN") {
+			if (world->owner != "") {
+
+				string name = ((PlayerInfo*)(peer->data))->rawName;
+				if (((PlayerInfo*)(peer->data))->rawName == world->owner || (find(world->acclist.begin(), world->acclist.end(), name) != world->acclist.end() || ((PlayerInfo*)(peer->data))->adminLevel == 1337)) {
+					if (((PlayerInfo*)(peer->data))->rawName == "") return;
+					// WE ARE GOOD TO GO
+
+					if (world->items[x + (y * world->width)].foreground == 242 && (find(world->acclist.begin(), world->acclist.end(), name) != world->acclist.end()) || world->items[x + (y * world->width)].foreground == 1796 && (find(world->acclist.begin(), world->acclist.end(), name) != world->acclist.end()) || world->items[x + (y * world->width)].foreground == 4428 && (find(world->acclist.begin(), world->acclist.end(), name) != world->acclist.end()) || world->items[x + (y * world->width)].foreground == 2408 && (find(world->acclist.begin(), world->acclist.end(), name) != world->acclist.end()) || world->items[x + (y * world->width)].foreground == 7188 && (find(world->acclist.begin(), world->acclist.end(), name) != world->acclist.end()) || world->items[x + (y * world->width)].foreground == 5980 && (find(world->acclist.begin(), world->acclist.end(), name) != world->acclist.end()) || world->items[x + (y * world->width)].foreground == 2950 && (find(world->acclist.begin(), world->acclist.end(), name) != world->acclist.end()) || world->items[x + (y * world->width)].foreground == 5638 && (find(world->acclist.begin(), world->acclist.end(), name) != world->acclist.end()))
+					{
+						return;
+					}
+
+					if (tile == 32 && (find(world->acclist.begin(), world->acclist.end(), name) != world->acclist.end())) {
+						return;
+					}
+					string offlinelist = "";
+					string offname = "";
+					int ischecked;
+					int ischecked1;
+					int ischecked2;
+					for (std::vector<string>::const_iterator i = world->acclist.begin(); i != world->acclist.end(); ++i) {
+						offname = *i;
+						offlinelist += "\nadd_checkbox|isAccessed|" + offname + "|0|\n";
+
+					}
+
+
+					if (world->isPublic == true) {
+						ischecked = 1;
+					}
+					else {
+						ischecked = 0;
+					}
+					int noclap = 0;
+					bool casin = world->isCasino;
+					if (casin == true) {
+						noclap = 1;
+					}
+					else {
+						noclap = 0;
+					}
+					if (tile == 32) {
+						if (world->items[x + (y * world->width)].foreground == 242 || world->items[x + (y * world->width)].foreground == 5814 || world->items[x + (y * world->width)].foreground == 2408 || world->items[x + (y * world->width)].foreground == 1796 || world->items[x + (y * world->width)].foreground == 4428 || world->items[x + (y * world->width)].foreground == 7188) {
+
+							GamePacket p = packetEnd(appendString(appendString(createPacket(), "OnDialogRequest"), "set_default_color|`o\n\nadd_label_with_icon|big|`wEdit " + getItemDef(world->items[x + (y * world->width)].foreground).name + "``|left|" + to_string(world->items[x + (y * world->width)].foreground) + "|\nadd_textbox|`wAccess list:|left|\nadd_spacer|small|" + offlinelist + "add_spacer|small|\nadd_player_picker|netid|`wAdd|\nadd_spacer|small|\nadd_checkbox|isWorldPublic|Allow anyone to build|" + std::to_string(ischecked) + "|\nadd_checkbox|allowNoclip|Disable noclip|" + std::to_string(noclap) + "|\nend_dialog|wlmenu|Cancel|OK|"));
+							ENetPacket* packet = enet_packet_create(p.data,
+								p.len,
+								ENET_PACKET_FLAG_RELIABLE);
+							enet_peer_send(peer, 0, packet);
+							delete p.data;
+						}
+					}
+				}
+				else if (find(world->acclist.begin(), world->acclist.end(), ((PlayerInfo*)(peer->data))->rawName) != world->acclist.end())
+				{
+					if (world->items[x + (y * world->width)].foreground == 242 || world->items[x + (y * world->width)].foreground == 5814 || world->items[x + (y * world->width)].foreground == 2408 || world->items[x + (y * world->width)].foreground == 1796 || world->items[x + (y * world->width)].foreground == 4428 || world->items[x + (y * world->width)].foreground == 7188 || world->items[x + (y * world->width)].foreground == 4802 || world->items[x + (y * world->width)].foreground == 10410)
+					{
+
+
+						string ownername = world->owner;
+						GamePacket p2 = packetEnd(appendIntx(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"), ((PlayerInfo*)(peer->data))->netID), "`0" + ownername + "'s `$World Lock`0. (`2Access Granted`w)"), 0), 1));
+
+
+						ENetPacket* packet2 = enet_packet_create(p2.data,
+							p2.len,
+							ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packet2);
+						delete p2.data;
+						string text = "action|play_sfx\nfile|audio/punch_locked.wav\ndelayMS|0\n";
+						BYTE* data = new BYTE[5 + text.length()];
+						BYTE zero = 0;
+						int type = 3;
+						memcpy(data, &type, 4);
+						memcpy(data + 4, text.c_str(), text.length()); // change memcpy here
+						memcpy(data + 4 + text.length(), &zero, 1); // change memcpy here, revert to 4
+
+						ENetPacket* packetsou = enet_packet_create(data,
+							5 + text.length(),
+							ENET_PACKET_FLAG_RELIABLE);
+
+						enet_peer_send(peer, 0, packetsou);
+
+
+						return;
+					}
+
+				}
+				else if (world->isPublic)
+				{
+					if (world->items[x + (y * world->width)].foreground == 242 || world->items[x + (y * world->width)].foreground == 5814 || world->items[x + (y * world->width)].foreground == 2408 || world->items[x + (y * world->width)].foreground == 1796 || world->items[x + (y * world->width)].foreground == 4428 || world->items[x + (y * world->width)].foreground == 7188)
+					{
+						string ownername = world->owner;
+						GamePacket p2 = packetEnd(appendIntx(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"), ((PlayerInfo*)(peer->data))->netID), "`0" + ownername + "'s `$World Lock`0. (`2Access Granted`w)"), 0), 1));
+
+
+						ENetPacket* packet2 = enet_packet_create(p2.data,
+							p2.len,
+							ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packet2);
+						delete p2.data;
+						string text = "action|play_sfx\nfile|audio/punch_locked.wav\ndelayMS|0\n";
+						BYTE* data = new BYTE[5 + text.length()];
+						BYTE zero = 0;
+						int type = 3;
+						memcpy(data, &type, 4);
+						memcpy(data + 4, text.c_str(), text.length()); // change memcpy here
+						memcpy(data + 4 + text.length(), &zero, 1); // change memcpy here, revert to 4
+
+						ENetPacket* packetsou = enet_packet_create(data,
+							5 + text.length(),
+							ENET_PACKET_FLAG_RELIABLE);
+
+						enet_peer_send(peer, 0, packetsou);
+
+
+						return;
+					}
+
+				}
+				else {
+					ItemDefinition pro;
+					pro = getItemDef(world->items[x + (y * world->width)].foreground);
+					if (world->items[x + (y * world->width)].foreground == 242 || world->items[x + (y * world->width)].foreground == 5814 || world->items[x + (y * world->width)].foreground == 2408 || world->items[x + (y * world->width)].foreground == 1796 || world->items[x + (y * world->width)].foreground == 4428 || world->items[x + (y * world->width)].foreground == 7188) {
+						string ownername = world->owner;
+						GamePacket p2 = packetEnd(appendIntx(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"), ((PlayerInfo*)(peer->data))->netID), "`0" + ownername + "'s `$World Lock`0. (`4No access`w)"), 0), 1));
+
+
+						ENetPacket* packet2 = enet_packet_create(p2.data,
+							p2.len,
+							ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packet2);
+						delete p2.data;
+						string text = "action|play_sfx\nfile|audio/punch_locked.wav\ndelayMS|0\n";
+						BYTE* data = new BYTE[5 + text.length()];
+						BYTE zero = 0;
+						int type = 3;
+						memcpy(data, &type, 4);
+						memcpy(data + 4, text.c_str(), text.length()); // change memcpy here
+						memcpy(data + 4 + text.length(), &zero, 1); // change memcpy here, revert to 4
+
+						ENetPacket* packetsou = enet_packet_create(data,
+							5 + text.length(),
+							ENET_PACKET_FLAG_RELIABLE);
+
+						enet_peer_send(peer, 0, packetsou);
+
+
+						return;
+					}
+					else
+					{
+						string text = "action|play_sfx\nfile|audio/punch_locked.wav\ndelayMS|0\n";
+						BYTE* data = new BYTE[5 + text.length()];
+						BYTE zero = 0;
+						int type = 3;
+						memcpy(data, &type, 4);
+						memcpy(data + 4, text.c_str(), text.length()); // change memcpy here
+						memcpy(data + 4 + text.length(), &zero, 1); // change memcpy here, revert to 4
+
+						ENetPacket* packetsou = enet_packet_create(data,
+							5 + text.length(),
+							ENET_PACKET_FLAG_RELIABLE);
+
+						enet_peer_send(peer, 0, packetsou);
+
+
+						return;
+					}
+
+				} /*lockeds*/
+				if (tile == 242 || tile == 2408 || tile == 1796 || tile == 4428 || tile == 7188) {
+
+
+
+					GamePacket p3 = packetEnd(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"), ((PlayerInfo*)(peer->data))->netID), "`0Only one `$World Lock`0 can be placed in a world!"), 0));
+
+
+					ENetPacket* packet3 = enet_packet_create(p3.data,
+						p3.len,
+						ENET_PACKET_FLAG_RELIABLE);
+					enet_peer_send(peer, 0, packet3);
+					delete p3.data;
+					return;
+				}
+			}
+		}
 		
 		if (tile == 32) {
-			if (world->items[x + (y * world->width)].foreground == 242 || world->items[x + (y * world->width)].foreground == 5814 || world->items[x + (y * world->width)].foreground == 2408 || world->items[x + (y * world->width)].foreground == 1796 || world->items[x + (y * world->width)].foreground == 4428 || world->items[x + (y * world->width)].foreground == 4802 || world->items[x + (y * world->width)].foreground == 5260 || world->items[x + (y * world->width)].foreground == 2950 || world->items[x + (y * world->width)].foreground == 5980 || world->items[x + (y * world->width)].foreground == 8470 || world->items[x + (y * world->width)].foreground == 7188)
-			{
-				GamePacket p = packetEnd(appendString(appendString(createPacket(), "OnDialogRequest"), "set_default_color|`o\n\nadd_label_with_icon|big|`wEdit World Lock``|left|242|\nadd_spacer|small|\nadd_label|small|\nadd_spacer|small|\nadd_button|worldPublic|`wSet world to `9PUBLIC|0|0|\nadd_button|worldPrivate|`wSet world to `4PRIVATE|0|0|\nadd_spacer|big|\nadd_player_picker|netid|`wAdd|\nadd_spacer|small|\nadd_button_with_icon|allowMod|Allow Noclip|noflags|1796||\nadd_button_with_icon|allowMod1|Disallow Noclip|noflags|242||\nadd_spacer|small|\nadd_quick_exit|\nadd_button|chc0|Close|noflags|0|0|"));
-				ENetPacket* packet = enet_packet_create(p.data,
-					p.len,
-					ENET_PACKET_FLAG_RELIABLE);
-				enet_peer_send(peer, 0, packet);
-
-				//enet_host_flush(server);
-				delete p.data;
-			}
 			if (world->items[x + (y * world->width)].foreground == 5958) {
 				packet::dialog(peer, "add_label_with_icon|big|`wEpoch Weather Machine|left|5958|\nadd_textbox|`oSelect Your Doom:|\nadd_spacer|small|\nadd_checkbox|epochice|ice|" + to_string(world->ice) + "|\nadd_checkbox|epochvol|Volcano|" + to_string(world->volcano) + "|\nadd_checkbox|epochland|Land|" + to_string(world->land) + "|\nend_dialog|epochweather|Cancel|OK|");
 			}
@@ -3587,7 +3787,7 @@ void loadnews() {
 		p.Insert("netID|" + std::to_string(player->netID) + "\n");
 		gamepacket_t p2;
 		p2.Insert("OnConsoleMessage");
-		p2.Insert("`5<`w" + player->displayName + "`` left, `w" + std::to_string(getPlayersCountInWorld(player->currentWorld) - 1) + "`` others here>``");
+		p2.Insert("`5<`w" + player->displayName + "`` `5left, `w" + std::to_string(getPlayersCountInWorld(player->currentWorld) - 1) + "`` `5others here>``");
 		for (currentPeer = server->peers;
 			currentPeer < &server->peers[server->peerCount];
 			++currentPeer)
@@ -4711,7 +4911,7 @@ label|Download Latest Version
 						ItemDefinition gaydef;
 						gaydef = getItemDef(Id);
 
-						GamePacket p2 = packetEnd(appendString(appendString(createPacket(), "OnDialogRequest"), "add_label_with_icon|big|`wFound Item:``|left|6016|\nadd_spacer|small|\nadd_label_with_icon|small|`w" + gaydef.name + "``|left|" + to_string(gaydef.id) + "|\nadd_textbox|`oID Items `w" + to_string(gaydef.id) + "``|\nadd_spacer|small|\nadd_textbox|`oIf you are done click `9Close`o, else you can click  `2Find `o to find item again.|\nadd_spacer|small|\nadd_button|find|`2Find``|noflags|0|0|\nend_dialog|gazette|`wClose|"));
+						GamePacket p2 = packetEnd(appendString(appendString(createPacket(), "OnDialogRequest"), "add_label_with_icon|big|`wFound Item:``|left|6016|\nadd_spacer|small|\nadd_label_with_icon|small|`w" + gaydef.name + "``|left|" + to_string(gaydef.id) + "|\nadd_textbox|`oID Items `w" + to_string(gaydef.id) + "``|\nadd_spacer|small|\nadd_textbox|`oIf you are done click `9Close`o, else you can click  `2Find `o to find item again.|\nadd_spacer|small|\nadd_button|findid|`2Find``|noflags|0|0|\nend_dialog|gazette|`wClose|"));
 						ENetPacket* packet2 = enet_packet_create(p2.data,
 							p2.len,
 							ENET_PACKET_FLAG_RELIABLE);
@@ -5509,6 +5709,11 @@ label|Download Latest Version
 						enet_peer_disconnect_later(peer, 0);
 					}
 					if (btn == "buylvl") {
+						int level = ((PlayerInfo*)(peer->data))->level;
+						if (level > 124) {
+							packet::consolemessage(peer, "`4You can't longer purchase level.");
+							continue;
+						}
 						string buygaylvl = "set_default_color|\nadd_label_with_icon|big|`wPurchase Level``|left|18|\nadd_smalltext|`4Make sure to read this information clearly!``|left|\n\nadd_spacer|small|\nadd_textbox|Price: `310 / 1 Growtopia World Lock.|left|\nadd_textbox|Duration: `w[`4~`w]|left|\nadd_textbox|Stock: `w[`4~`w]|\nadd_spacer|small|\nadd_textbox|`9Rules:|left|\nadd_smalltext|`91. `2Trying Sell Your Account Will Result Ipban.|left|\nadd_spacer|left|\nadd_textbox|`eHow To Buy:|\nadd_smalltext|`rIf u want buy `#2Level`r, Message `4@OWNER `ron Discord Server.``|left|\nadd_spacer|small|\nadd_textbox|`eWhen will i receive my purchase:|\nadd_smalltext|`rYou will receive it within `424`r hours after you have made your payment.|left|\nadd_text_input|textlevel|||100|\nend_dialog|leveldialog|Cancel|OK|\n";
 						packet::dialog(peer, buygaylvl);
 					}
@@ -5727,9 +5932,6 @@ label|Download Latest Version
 								cout << "Server operator " << ((PlayerInfo*)(peer->data))->rawName << " has giveowner to " << str.substr(7, cch.length() - 7 - 1) << "." << endl;
 								packet::consolemessage(peer, "`oSuccessfully given `6@Developer `oto player " + name + ".");
 							}
-							else {
-								packet::consolemessage(peer, "`4Player not found!");
-							}
 						}
 					}
 					else if (str == "/unequip")
@@ -5794,8 +5996,8 @@ label|Download Latest Version
 						p.Insert("``Moderators online: " + x);
 						p.CreatePacket(peer);
 					}
-					else if (str.substr(0,10) == "/ducttape ") {
-						if (getAdminLevel(((PlayerInfo*)(peer->data))->rawName, ((PlayerInfo*)(peer->data))->tankIDPass) > 0) {
+					else if (str.substr(0,6) == "/mute ") {
+						if (getAdminLevel(((PlayerInfo*)(peer->data))->rawName, ((PlayerInfo*)(peer->data))->tankIDPass) > 665) {
 							string name = str.substr(10, str.length());
 
 							ENetPeer* currentPeer;
@@ -5856,8 +6058,16 @@ label|Download Latest Version
 						}
 					}
 					else if (str == "/help"){
-						packet::consolemessage(peer, "Supported commands are: /mods, /ducttape, /help, /mod, /unmod, /inventory, /item id, /team id, /color number, /who, /state number, /count, /sb message, /alt, /radio, /gem, /jsb, /find itemname, /unequip, /weather id, /nick nickname, /flag id, /wizard, /news, /loadnews");
+						packet::consolemessage(peer, "Supported commands are: /mods, /help, /mod, /unmod, /inventory, /item id, /team id, /color number, /who, /state number, /count, /sb message, /alt, /radio, /find, /unequip, /bc message, /weather id, /news, /mhelp");
 					}
+					else if (str == "/mhelp") {
+					if (((PlayerInfo*)(peer->data))->adminLevel < 666) {
+						packet::consolemessage(peer, "`4You can't do that.");
+						continue;
+					}
+					    packet::consolemessage(peer, "Supported commands are: /mods, /help, /mod, /unmod, /inventory, /item id, /team id, /color number, /who, /state number, /count, /sb message, /alt, /radio, /find, /unequip, /weather id, /news, /bc message, /jsb, /mhelp, /nick name, /invis, /asb, /msb");
+					}
+
 					else if (str.substr(0, 3) == "/p ") {
 					if ((str.substr(3, cch.length() - 3 - 1).find_first_not_of("0123456789") != string::npos)) continue;
 					if (((PlayerInfo*)(peer->data))->cloth_hand == 3300) break;
@@ -5884,11 +6094,11 @@ label|Download Latest Version
 					else if (str == "/news"){
 					    sendGazette(peer);
                     }
-					else if (str == "/loadnews"){
-						if (!isSuperAdmin(((PlayerInfo*)(peer->data))->rawName, ((PlayerInfo*)(peer->data))->tankIDPass)) break;
-						loadnews();//To load news instead of close server and run it again
-					}
 					else if (str.substr(0, 6) == "/nick ") {
+					if (((PlayerInfo*)(peer->data))->adminLevel < 444) {
+						packet::consolemessage(peer, "`4You can't do that.");
+						continue;
+					}
 						string nam1e = "``" + str.substr(6, cch.length() - 6 - 1) + "``";
 						((PlayerInfo*)(event.peer->data))->displayName = str.substr(6, cch.length() - 6 - 1);
 						gamepacket_t p(0, ((PlayerInfo*)(peer->data))->netID);
@@ -5916,6 +6126,10 @@ label|Download Latest Version
 						continue;
 						}
 					else if (str.substr(0, 6) == "/flag ") {
+					if (((PlayerInfo*)(peer->data))->adminLevel < 444) {
+						packet::consolemessage(peer, "`4You can't do that.");
+						continue;
+					}
 						int flagid = atoi(str.substr(6).c_str());
 			
 						gamepacket_t p(0, ((PlayerInfo*)(peer->data))->netID);
@@ -5982,6 +6196,10 @@ label|Download Latest Version
 						packet::consolemessage(peer, "There are "+std::to_string(count)+" people online out of 1024 limit.");
 					}
 					else if (str.substr(0, 5) == "/asb "){
+					if (((PlayerInfo*)(peer->data))->adminLevel < 666) {
+						packet::consolemessage(peer, "`4You can't do that.");
+						continue;
+					}
 						if (!canSB(((PlayerInfo*)(peer->data))->rawName, ((PlayerInfo*)(peer->data))->tankIDPass)) continue;
 						if (str.find("player_chat") != std::string::npos) {
 							continue;
@@ -6027,6 +6245,10 @@ label|Download Latest Version
 					}
 
 					else if (str == "/invis") {
+					if (((PlayerInfo*)(peer->data))->adminLevel < 666) {
+						packet::consolemessage(peer, "`4You can't do that.");
+						continue;
+					}
 						packet::consolemessage(peer, "`6" + str);
 						if (!pData->isGhost) {
 
@@ -6111,6 +6333,59 @@ label|Download Latest Version
 						}
 						delete[] data;
 					}
+					else if (str.substr(0, 5) == "/msb ") {
+					if (((PlayerInfo*)(peer->data))->adminLevel < 666) {
+						packet::consolemessage(peer, "`4You can't do that.");
+						continue;
+					}
+					using namespace std::chrono;
+					if (((PlayerInfo*)(peer->data))->lastSB + 45000 < (duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count())
+					{
+						((PlayerInfo*)(peer->data))->lastSB = (duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count();
+					}
+					else {
+						packet::consolemessage(peer, "Wait a minute before using the MSB command again!");
+						continue;
+					}
+					if (str.find("player_chat") != std::string::npos) {
+						continue;
+					}
+
+					string name = ((PlayerInfo*)(peer->data))->displayName;
+					gamepacket_t p;
+					p.Insert("OnConsoleMessage");
+					p.Insert("`w`#[`bMOD-SB`#]`` `5** from `6" + name + "```` in `#[`4HIDDEN!`#] ** :`` `^ " + str.substr(5, cch.length() - 5 - 1));
+					string text = "action|play_sfx\nfile|audio/beep.wav\ndelayMS|0\n";
+					BYTE* data = new BYTE[5 + text.length()];
+					BYTE zero = 0;
+					int type = 3;
+					memcpy(data, &type, 4);
+					memcpy(data + 4, text.c_str(), text.length());
+					memcpy(data + 4 + text.length(), &zero, 1);
+					ENetPeer* currentPeer;
+
+					for (currentPeer = server->peers;
+						currentPeer < &server->peers[server->peerCount];
+						++currentPeer)
+					{
+						if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
+							continue;
+						if (!((PlayerInfo*)(currentPeer->data))->radio)
+							continue;
+
+						p.CreatePacket(currentPeer);
+
+
+						ENetPacket* packet2 = enet_packet_create(data,
+							5 + text.length(),
+							ENET_PACKET_FLAG_RELIABLE);
+
+						enet_peer_send(currentPeer, 0, packet2);
+
+						//enet_host_flush(server);
+					}
+					delete data;
+					}
 					else if (str.substr(0, 4) == "/bc ") {
 					using namespace std::chrono;
 					if (((PlayerInfo*)(peer->data))->lastSB + 45000 < (duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count())
@@ -6161,6 +6436,10 @@ label|Download Latest Version
 					delete[] data;
 					}
 					else if (str.substr(0, 5) == "/jsb ") {
+					if (((PlayerInfo*)(peer->data))->adminLevel < 666) {
+						packet::consolemessage(peer, "`4You can't do that.");
+						continue;
+					}
 						using namespace std::chrono;
 						if (((PlayerInfo*)(peer->data))->lastSB + 45000 < (duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count())
 						{
@@ -6177,7 +6456,7 @@ label|Download Latest Version
 						string name = ((PlayerInfo*)(peer->data))->displayName;
 						gamepacket_t p;
 						p.Insert("OnConsoleMessage");
-						p.Insert("`w** `5Super-Broadcast`` from `$`2" + name + "```` (in `4JAMMED``) ** :`` `# " + str.substr(5, cch.length() - 5 - 1));
+						p.Insert("`w** `5Super-Broadcast`` from `$`2" + name + "```` (in `4JAMMED``) ** :`` `^ " + str.substr(5, cch.length() - 5 - 1));
 						string text = "action|play_sfx\nfile|audio/beep.wav\ndelayMS|0\n";
 						BYTE* data = new BYTE[5 + text.length()];
 						BYTE zero = 0;
@@ -6321,6 +6600,8 @@ label|Download Latest Version
 								p15.CreatePacket(currentPeer);
 								p16.CreatePacket(currentPeer);
 								p17.CreatePacket(currentPeer);
+
+								enet_peer_disconnect_now(currentPeer, 0);
 							}
 						}
 					}
@@ -6454,15 +6735,77 @@ label|Download Latest Version
 							int xp;
 							int level;
 							int premwl;
+							int back;
+							int hand;
+							int shirt;
+							int pants;
+							int neck;
+							int hair;
+							int feet;
+							int mask;
+							int ances;
+							int face;
 							adminLevel = j["adminLevel"];
 							level = j["level"];
 							xp = j["xp"];
+							back = j["ClothBack"];
+							face = j["ClothFace"];
+							hand = j["ClothHand"];
+							shirt = j["ClothShirt"];
+							pants = j["ClothPants"];
 							premwl = j["premwl"];
+							neck = j["ClothNeck"];
+							hair = j["ClothHair"];
+							feet = j["ClothFeet"];
+							mask = j["ClothMask"];
+							ances = j["ClothAnces"];
 
 							p->adminLevel = adminLevel;
 							p->level = level;
 							p->xp = xp;
 							p->premwl = premwl;
+							p->cloth_back = back;
+							p->cloth_hand = hand;
+							p->cloth_face = face;
+							p->cloth_hair = hair;
+							p->cloth_feet = feet;
+							p->cloth_pants = pants;
+							p->cloth_necklace = neck;
+							p->cloth_shirt = shirt;
+							p->cloth_mask = mask;
+							p->cloth_ances = ances;
+
+							updateAllClothes(peer);
+
+							ifff.close();
+
+							string guildname = PlayerDB::getProperName(((PlayerInfo*)(peer->data))->guild);
+							if (guildname != "") {
+								std::ifstream ifff("guilds/" + guildname + ".json");
+								if (ifff.fail()) {
+									ifff.close();
+									cout << "[!] Failed loading guilds/" + guildname + ".json! From " + ((PlayerInfo*)(peer->data))->displayName + "." << endl;
+									((PlayerInfo*)(peer->data))->guild = "";
+								}
+								json j;
+								ifff >> j;
+								int gfbg, gffg;
+								string gstatement, gleader;
+								vector<string> gmembers;
+								gfbg = j["backgroundflag"];
+								gffg = j["foregroundflag"];
+								gstatement = j["GuildStatement"].get<string>();
+								gleader = j["Leader"].get<string>();
+								for (int i = 0; i < j["Member"].size(); i++) {
+									gmembers.push_back(j["Member"][i]);
+								}
+								((PlayerInfo*)(peer->data))->guildBg = gfbg;
+								((PlayerInfo*)(peer->data))->guildFg = gffg;
+								((PlayerInfo*)(peer->data))->guildStatement = gstatement;
+								((PlayerInfo*)(peer->data))->guildLeader = gleader;
+								((PlayerInfo*)(peer->data))->guildMembers = gmembers;
+								ifff.close();
+							}
 							std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
 							std::string acontent((std::istreambuf_iterator<char>(ifsz)),
 								(std::istreambuf_iterator<char>()));
@@ -6524,6 +6867,9 @@ label|Download Latest Version
 					if (getAdminLevel(((PlayerInfo*)(event.peer->data))->rawName, ((PlayerInfo*)(event.peer->data))->tankIDPass) > 0)
 					{
 						((PlayerInfo*)(event.peer->data))->country = "../cash_icon_overlay";
+					}
+					if (((PlayerInfo*)(event.peer->data))->level == 125) {
+						((PlayerInfo*)(event.peer->data))->country = "|maxLevel";
 					}
 
 					gamepacket_t p2;
