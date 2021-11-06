@@ -34,7 +34,7 @@ You can fix that issue with this way :
 - Create new folder named "players"
 
 For latest items.dat you can get from gt folder or guckproject.
-For latest cdncontent and onsupermain proto, you can get from guckproject
+For latest cdncontent and onsupermain proto, you can get it by using proxy and login to real gt or join guckproject server to get it.
 
 GuckProject Link :
 https://bit.ly/guckproject
