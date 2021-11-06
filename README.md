@@ -79,3 +79,5 @@ https://bit.ly/guckproject
 - Added GrowPass purchasement via premium wl
 - Added GrowPass Role
 - Added Ssup on all role name (except player, read how to activate Ssup name in the top)
+- Moderator Commands
+- Bluename
