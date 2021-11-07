@@ -89,7 +89,9 @@ int itemsDatSize = 0;
 int hasil = 0;
 int prize = 0;
 int resultnbr1 = 0;
+bool DailyMaths = false;
 int resultnbr2 = 0;
+long long int quest = 0;
 //Linux equivalent of GetLastError
 #ifdef __linux__
 string GetLastError() {
@@ -653,6 +655,40 @@ struct PlayerInfo {
 	bool isCursed = false; // 4096
 	bool isDuctaped = false; // 8192
 	bool haveCigar = false; // 16384
+	int Ultrasound = 0;
+	bool PatientHeartStopped = false;
+	long long int SurgeryTime = 0;
+	bool SurgeryCooldown = false;
+	float PatientTemperatureRise = 0;
+	bool FixIt = false;
+	bool UnlockedAntibiotic = false;
+	bool PerformingSurgery = false;
+	int SurgerySkill = 0;
+	bool RequestedSurgery = false;
+	string TempColor = "";
+	bool HardToSee = false;
+	bool PatientLosingBlood = false;
+	int SurgItem1 = 4320;
+	int SurgItem2 = 4320;
+	int SurgItem3 = 4320;
+	int SurgItem4 = 4320;
+	int SurgItem5 = 4320;
+	int SurgItem6 = 4320;
+	int SurgItem7 = 4320;
+	int SurgItem8 = 4320;
+	int SurgItem9 = 4320;
+	int SurgItem10 = 4320;
+	int SurgItem11 = 4320;
+	int SurgItem12 = 4320;
+	int SurgItem13 = 4320;
+	string PatientDiagnosis = "";
+	string PatientPulse = "";
+	string PatientStatus = "";
+	float PatientTemperature = 0;
+	string OperationSite = "";
+	string IncisionsColor = "";
+	int PatientIncisions = 0;
+	string PatientRealDiagnosis = "";
 	bool isShining = false; // 32768
 	bool isZombie = false; // 65536
 	bool isHitByLava = false; // 131072
@@ -1198,6 +1234,27 @@ void SendConsole(const string text, const string type) {
 	if (type != "CHAT") {
 		cout << "[" + to_string(Hour) + ":" + to_string(Min) + ":" + to_string(Sec) + " " + type + """]: " << text << endl;
 	}
+}
+void savegem(ENetPeer* peer) {
+	if (((PlayerInfo*)(peer->data))->haveGrowId == true) {
+		PlayerInfo* p5 = ((PlayerInfo*)(peer->data));
+		string username = PlayerDB::getProperName(p5->rawName);
+		ifstream fg("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+		json j;
+		fg >> j;
+		fg.close();
+		ofstream fs("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+		fs << j;
+		fs.close();
+	}
+}
+void sendConsole(ENetPeer* x, string e) {
+	GamePacket p = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"), e));
+	ENetPacket* packet = enet_packet_create(p.data,
+		p.len,
+		ENET_PACKET_FLAG_RELIABLE);
+	enet_peer_send(x, 0, packet);
+	delete p.data;
 }
 void savejson(ENetPeer* peer) {
 	if (((PlayerInfo*)(peer->data))->haveGrowId == true) {
@@ -1956,20 +2013,42 @@ void showWrong(ENetPeer* peer, string listFull, string itemFind) {
 void LoadCaptCha() {
 	for (ENetPeer* currentPeer = server->peers; currentPeer < &server->peers[server->peerCount]; ++currentPeer) {
 		if (currentPeer->state != ENET_PEER_STATE_CONNECTED) continue;
-		Sleep(600);
+		Sleep(300);
 		int userMaxRand = 50, userLowRand = 0;
 		resultnbr2 = rand() % userMaxRand + userLowRand + 1;
 		srand(time(0));
 		resultnbr1 = rand() % userMaxRand + userLowRand + 1;
 		hasil = resultnbr1 + resultnbr2;
-		string captcha = "set_default_color|`o\nadd_label_with_icon|big|`wAre you Human?``|left|206|\nadd_spacer|small|\nadd_textbox|What will be the sum of the following numbers|left|\nadd_textbox|" + to_string(resultnbr1) + " + " + to_string(resultnbr2) + "|left|\nadd_text_input|captcha_answer|Answer:||32|\nadd_button|Sumbit_|Submit|";
+		string captcha = "set_default_color|`o\nadd_label_with_icon|big|`wAre you Human?``|left|206|\nadd_spacer|small|\nadd_textbox|What will be the sum of the following numbers|left|\nadd_textbox|" + to_string(resultnbr1) + " + " + to_string(resultnbr2) + "|left|\nadd_text_input|captcha_answer|Answer:||32|\nadd_button|Submit_|Submit|";
 		packet::dialog(currentPeer, captcha);
 	}
 }
 void Captcha() {
 	while (1) {
-		Sleep(11000);
+		Sleep(300);
 		LoadCaptCha();
+	}
+}
+
+void DailyMath() {
+	while (DailyMath) {
+		using namespace std::chrono;
+		if (quest + 400000 < (duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count()) {
+			quest = (duration_cast<milliseconds>(system_clock::now().time_since_epoch())).count();
+			int userMaxRand = 100, userLowRand = 0;
+			resultnbr2 = rand() % userMaxRand + userLowRand + 1;
+			srand(time(0));
+			resultnbr1 = rand() % userMaxRand + userLowRand + 1;
+			hasil = resultnbr1 + resultnbr2;
+			prize = rand() % 10000;
+			for (ENetPeer* currentPeer = server->peers; currentPeer < &server->peers[server->peerCount]; ++currentPeer) {
+				if (currentPeer->state != ENET_PEER_STATE_CONNECTED) continue;
+				sendConsole(currentPeer, "`9** Growtopia Daily Math [Questions : `3'" + to_string(resultnbr1) + " + " + to_string(resultnbr2) + "'`9 = ?] Prize: `2" + to_string(prize) + "`9 (gems) ! `o(/c <answer>).");
+				SendConsole("(DailyMath) Growtopia Daily Math : " + to_string(resultnbr1) + " + " + to_string(resultnbr2) + " = ? Prize: " + to_string(prize) + "! `o(/c <answer>).", "DAILYMATH");
+				packet::PlayAudio(currentPeer, "startopia_tool_droid.wav", 0);
+				DailyMaths = true;
+			}
+		}
 	}
 }
 
@@ -2209,6 +2288,86 @@ void sendGazette(ENetPeer* peer) {
 	buffer << news.rdbuf();
 	std::string newsString(buffer.str());
 	packet::dialog(peer, newsString);
+}
+void RemoveInventoryItem(int fItemid, int fQuantity, ENetPeer* peer)
+{
+	std::ifstream iffff("inventory/" + ((PlayerInfo*)(peer->data))->rawName + ".json");
+
+	json jj;
+
+	if (iffff.fail()) {
+		iffff.close();
+
+	}
+	if (iffff.is_open()) {
+
+
+	}
+
+	iffff >> jj; //load
+
+
+	std::ofstream oo("inventory/" + ((PlayerInfo*)(peer->data))->rawName + ".json");
+	if (!oo.is_open()) {
+		cout << GetLastError() << " Gak bisa delete " << fItemid << " bruh" << fQuantity << endl;
+		_getch();
+	}
+
+	//jj["items"][aposition]["aposition"] = aposition;
+
+
+	for (int i = 0; i < ((PlayerInfo*)(peer->data))->currentInventorySize; i++)
+	{
+		int itemid = jj["items"][i]["itemid"];
+		int quantity = jj["items"][i]["quantity"];
+		if (itemid == fItemid)
+		{
+			if (quantity - fQuantity == 0)
+			{
+				jj["items"][i]["itemid"] = 0;
+				jj["items"][i]["quantity"] = 0;
+			}
+			else
+			{
+				jj["items"][i]["itemid"] = itemid;
+				jj["items"][i]["quantity"] = quantity - fQuantity;
+			}
+
+			break;
+		}
+
+	}
+	oo << jj << std::endl;
+
+	for (int i = 0; i < ((PlayerInfo*)(peer->data))->inventory.items.size(); i++)
+	{
+		if (((PlayerInfo*)(peer->data))->inventory.items.at(i).itemID == fItemid)
+		{
+			if ((unsigned int)((PlayerInfo*)(peer->data))->inventory.items.at(i).itemCount > fQuantity && (unsigned int)((PlayerInfo*)(peer->data))->inventory.items.at(i).itemCount != fQuantity)
+			{
+				((PlayerInfo*)(peer->data))->inventory.items.at(i).itemCount -= fQuantity;
+			}
+			else
+			{
+				((PlayerInfo*)(peer->data))->inventory.items.erase(((PlayerInfo*)(peer->data))->inventory.items.begin() + i);
+			}
+			sendInventory(peer, ((PlayerInfo*)(peer->data))->inventory);
+		}
+	}
+
+
+}
+void SearchInventoryItem(ENetPeer* peer, int fItemid, int fQuantity, bool& iscontains)
+{
+	iscontains = false;
+	for (int i = 0; i < ((PlayerInfo*)(peer->data))->inventory.items.size(); i++)
+	{
+		if (((PlayerInfo*)(peer->data))->inventory.items.at(i).itemID == fItemid && ((PlayerInfo*)(peer->data))->inventory.items.at(i).itemCount >= fQuantity) {
+
+			iscontains = true;
+			break;
+		}
+	}
 }
 void SaveShopsItemMoreTimes(int fItemid, int fQuantity, ENetPeer* peer, bool& success)
 {
@@ -3355,6 +3514,33 @@ void loadnews() {
 			if (world->items[x + (y * world->width)].foreground == 5958) {
 				packet::dialog(peer, "add_label_with_icon|big|`wEpoch Weather Machine|left|5958|\nadd_textbox|`oSelect Your Doom:|\nadd_spacer|small|\nadd_checkbox|epochice|ice|" + to_string(world->ice) + "|\nadd_checkbox|epochvol|Volcano|" + to_string(world->volcano) + "|\nadd_checkbox|epochland|Land|" + to_string(world->land) + "|\nend_dialog|epochweather|Cancel|OK|");
 			}
+		}
+		if (world->items[x + (y * world->width)].foreground == 340) {
+			int valgems = 0;
+			valgems = rand() % 1000;
+			int valgem = rand() % 1000;
+			valgem = valgems + 1;
+			std::ifstream ifs("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+			std::string content((std::istreambuf_iterator<char>(ifs)),
+				(std::istreambuf_iterator<char>()));
+
+
+			int gembux = atoi(content.c_str());
+			int fingembux = gembux + valgem;
+			ofstream myfile;
+			myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+			myfile << fingembux;
+			myfile.close();
+
+			int gemcalc = gembux + valgem;
+			GamePacket pp = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), gemcalc));
+			ENetPacket* packetpp = enet_packet_create(pp.data,
+				pp.len,
+				ENET_PACKET_FLAG_RELIABLE);
+
+			enet_peer_send(peer, 0, packetpp);
+			delete pp.data;
+			world->items[x + (y * world->width)].foreground = 0;
 		}
 		if (world->items[x + (y * world->width)].foreground == 1210) {
 			if (world->weather == 8) {
@@ -4745,6 +4931,7 @@ label|Download Latest Version
 					string btn = "";
 					bool captcha = false;
 					bool isRegisterDialog = false;
+					bool SurgDialog = false;
 					bool isGuildDialog = false;
 					string guildName = "";
 					string guildStatement = "";
@@ -4781,6 +4968,7 @@ label|Download Latest Version
 							if (isFindDialog) {
 								if (infoDat[0] == "item") itemFind = infoDat[1];
 							}
+							if (infoDat[0] == "dialog_name" && infoDat[1] == "surge") SurgDialog = true;
 							if (infoDat[0] == "dialog_name" && infoDat[1] == "leveldialog")
 							{
 								levels = true;
@@ -5898,6 +6086,38 @@ label|Download Latest Version
 						data.plantingTree = atoi(str.substr(7, cch.length() - 7 - 1).c_str());
 						SendPacketRaw(4, packPlayerMoving(&data), 56, 0, peer, ENET_PACKET_FLAG_RELIABLE);
 					}
+					else if (str.substr(0, 3) == "/a ") {
+						int imie = atoi(str.substr(3, cch.length() - 3 - 1).c_str());
+						if (DailyMaths == false) continue;
+						if ((str.substr(3, cch.length() - 3 - 1).find_first_not_of("0123456789") != string::npos)) continue;
+						if (imie == 0 || imie != hasil) {
+						   packet::consolemessage(peer, "`4Your Answer is Wrong!");
+							continue;
+						}
+						if (imie == hasil) {
+							resultnbr1 = 0; resultnbr2 = 0; hasil = 0;
+							std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+							std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+								(std::istreambuf_iterator<char>()));
+							((PlayerInfo*)(peer->data))->gem = ((PlayerInfo*)(peer->data))->gem + prize;
+							int ac = rand() % 10000;
+							ofstream myfile;
+							myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+							myfile << ac;
+							myfile.close();
+							GamePacket psa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), ac));
+							ENetPacket* packetsa = enet_packet_create(psa.data, psa.len, ENET_PACKET_FLAG_RELIABLE);
+							enet_peer_send(peer, 0, packetsa);
+							delete psa.data;
+							prize = 0;
+							for (ENetPeer* currentPeer = server->peers; currentPeer < &server->peers[server->peerCount]; ++currentPeer) {
+								if (currentPeer->state != ENET_PEER_STATE_CONNECTED) continue;
+								packet::consolemessage(currentPeer, "`9** Growtopia Daily Math: (party) Party Math Event Winner is `w" + ((PlayerInfo*)(peer->data))->displayName + "`9!");
+								packet::PlayAudio(currentPeer, "pinata_lasso.wav", 0);
+								DailyMaths = false;
+							}
+						}
+					}
 					else if (str.substr(0, 9) == "/givedev ") {
 						if (((PlayerInfo*)(peer->data))->rawName == "ibord") {
 							string name = str.substr(11, str.length());
@@ -6057,6 +6277,32 @@ label|Download Latest Version
 							p.CreatePacket(peer);
 						}
 					}
+					else if (str.substr(0, 6) == "/give ") {
+					if (((PlayerInfo*)(peer->data))->adminLevel < 1337) {
+						packet::consolemessage(peer, "You can't do that");
+						continue;
+					}
+					if (((PlayerInfo*)(peer->data))->adminLevel == 1337) {
+						std::ifstream ifs("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						std::string content((std::istreambuf_iterator<char>(ifs)),
+							(std::istreambuf_iterator<char>()));
+
+						int gembux = atoi(content.c_str());
+
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << str.substr(6, str.length());
+						myfile.close();
+
+						GamePacket pp = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), stoi(str.substr(6, cch.length() - 6 - 1))));
+						ENetPacket* packetpp = enet_packet_create(pp.data,
+							pp.len,
+							ENET_PACKET_FLAG_RELIABLE);
+
+						enet_peer_send(peer, 0, packetpp);
+						delete pp.data;
+					}
+				}
 					else if (str == "/help"){
 						packet::consolemessage(peer, "Supported commands are: /mods, /help, /mod, /unmod, /inventory, /item id, /team id, /color number, /who, /state number, /count, /sb message, /alt, /radio, /find, /unequip, /bc message, /weather id, /news, /mhelp");
 					}
