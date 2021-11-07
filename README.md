@@ -81,3 +81,6 @@ https://bit.ly/guckproject
 - Added Ssup on all role name (except player, read how to activate Ssup name in the top)
 - Moderator Commands
 - Bluename
+- Math Events (Not Sure)
+- Captcha (Not Sure)
+- /give
