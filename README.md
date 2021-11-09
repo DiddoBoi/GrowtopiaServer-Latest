@@ -4,7 +4,7 @@
 - Fixed Registration issue
 - Re-designed /find command UI
 
-Credit : GrowtopiaNoobs, Tianvan, GuckTubeYT, LyteVV, GTRA Owner, and Ipadtopia
+Credit : GrowtopiaNoobs, Tianvan, GuckTubeYT, LyteVV, GTRA Owner, Restart, and Ipadtopia
 
 Additional Note :
 - This source doesn't require coredata.txt
@@ -84,3 +84,8 @@ https://bit.ly/guckproject
 - Math Events (Not Sure)
 - Captcha (Not Sure)
 - /give
+- Rgt Full Design (Except playeritem section)
+- Working IOTM purchasement on store
+- Added Effect to Mystic Bow and Ouroboros Charm
+- Deleted Auto inventory
+- Premium WL Gacha (can be purchased from wrench->purchase rank->super golden booty chest)
