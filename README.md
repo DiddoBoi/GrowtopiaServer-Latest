@@ -89,3 +89,7 @@ https://bit.ly/guckproject
 - Added Effect to Mystic Bow and Ouroboros Charm
 - Deleted Auto inventory
 - Premium WL Gacha (can be purchased from wrench->purchase rank->super golden booty chest)
+- Updated Everything to latest
+- Disabled a few things from /find
+- Fixed Growmoji bug
+- Added a few things in store
