@@ -581,6 +581,10 @@ struct PlayerInfo {
 	int characterState = 0;
 	vector<string>friendinfo;
 	vector<string>createfriendtable;
+	int wrenchsession = 0;
+	string wrenchedplayer = "";
+	string wrenchdisplay = "";
+	string lastInfo = "";
 	string tankIDName = "";
 	string tankIDPass = "";
 	string requestedName = "";
@@ -2119,6 +2123,41 @@ void Captcha() {
 		LoadCaptCha();
 	}
 }
+void quiz(ENetPeer* currentPeer)
+{
+	int a = rand() % 100;
+	int b = rand() % 300;
+	int c = rand() % 79;
+	int d = rand() % 30;
+	int h = a + b;
+	int j = c + d;
+	int all = h + j;
+	int free = rand() % 100 + 100;
+	string gems = std::to_string(free);
+	string timer = std::to_string(all);
+	ofstream myfile;
+	myfile.open("math.txt");
+	myfile << timer;
+	myfile.close();
+	ofstream gay;
+	gay.open("gems.txt");
+	gay << gems;
+	gay.close();
+	for (currentPeer = server->peers;
+		currentPeer < &server->peers[server->peerCount];
+		++currentPeer)
+	{
+		if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
+			continue;
+		GamePacket p3 = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"), "`9** Growtopia Daily Math [Questions : `3'" + to_string(resultnbr1) + " + " + to_string(resultnbr2) + "'`9 = ?] Prize: `2" + to_string(prize) + "`9 (gems) ! `o(/c <answer>)."));
+		ENetPacket* packet3 = enet_packet_create(p3.data,
+			p3.len,
+			ENET_PACKET_FLAG_RELIABLE);
+		enet_peer_send(currentPeer, 0, packet3);
+		//enet_peer_reset(currentPeer);
+		delete p3.data;
+	}
+}
 
 void DailyMath() {
 	while (DailyMath) {
@@ -2356,6 +2395,25 @@ void sendInventory(ENetPeer* peer, PlayerInventory inventory)
 	enet_peer_send(peer, 0, packet3);
 	delete data2;
 	//enet_host_flush(server);
+}
+void PlayAudioWorld(ENetPeer* peer, string audioFile) {
+	string text = "action|play_sfx\nfile|" + audioFile + "\ndelayMS|0\n";
+	BYTE* data = new BYTE[5 + text.length()];
+	BYTE zero = 0;
+	int type = 3;
+	memcpy(data, &type, 4);
+	memcpy(data + 4, text.c_str(), text.length());
+	memcpy(data + 4 + text.length(), &zero, 1);
+	for (ENetPeer* currentPeer = server->peers; currentPeer < &server->peers[server->peerCount]; ++currentPeer) {
+		if (currentPeer->state != ENET_PEER_STATE_CONNECTED) continue;
+		if (isHere(peer, currentPeer)) {
+			ENetPacket* packet2 = enet_packet_create(data,
+				5 + text.length(),
+				ENET_PACKET_FLAG_RELIABLE);
+			enet_peer_send(currentPeer, 0, packet2);
+		}
+	}
+	delete[] data;
 }
 
 void OnSetCurrentWeather(ENetPeer* peer, int weather) {
@@ -4181,7 +4239,6 @@ void loadnews() {
 			world->weather = 53;
 			OnSetCurrentWeather(peer, world->weather);
 		}
-
 		ENetPeer * currentPeer;
 
 		for (currentPeer = server->peers;
@@ -4194,6 +4251,46 @@ void loadnews() {
 				SendPacketRaw(4, packPlayerMoving(&data), 56, 0, currentPeer, ENET_PACKET_FLAG_RELIABLE);
 			
 			//cout << "Tile update at: " << data2->punchX << "x" << data2->punchY << endl;
+		}
+	}
+	void autosave()
+	{
+		bool exist = std::experimental::filesystem::exists("save.txt");
+		if (!exist)
+		{
+			ofstream save("save.txt");
+			save << 0;
+			save.close();
+		}
+		std::ifstream ok("save.txt");
+		std::string limits((std::istreambuf_iterator<char>(ok)),
+			(std::istreambuf_iterator<char>()));
+		int a = atoi(limits.c_str());
+		if (a == 0)
+		{
+			ofstream ok;
+			ok.open("save.txt");
+			ok << 50;
+			ok.close();
+			worldDB.saveAll();
+			cout << "[!]Auto Saving Worlds" << endl;
+		}
+		else
+		{
+			int aa = a - 1;
+			ofstream ss;
+			ss.open("save.txt");
+			ss << aa;
+			ss.close();
+			if (aa == 0)
+			{
+				ofstream ok;
+				ok.open("save.txt");
+				ok << 50;
+				ok.close();
+				worldDB.saveAll();
+				cout << "[!]Auto Saving Worlds" << endl;
+			}
 		}
 	}
 
@@ -4454,7 +4551,6 @@ void loadnews() {
 			}
 		}
 	}
-
 
 	//This is only on server. The inventory is automatically updated on the client.
 	void addItemToInventory(ENetPeer * peer, int id) {
@@ -5042,6 +5138,45 @@ label|Download Latest Version
 				}*/
 					packet::storerequest(peer, text1 + text2 + text3 + text4 + text5 + text6 + text7 + text8 + text9 + text10 + text11 + text12 + text13 + text14 + text15 + text16 + text17 + text18 + text19 + text20 + text21 + text22);
 				}
+				if (cch.find("action|buy\nitem|locks_menu") == 0) {
+					string text1 = "set_description_text|`2Locks And Stuff!``  Select the item you'd like more info on, or BACK to go back.";
+					string text2 = "|enable_tabs|1";
+					string text3 = "|\nadd_tab_button|store_menu|Home|interface/large/btn_shop2.rttex||0|0|0|0||||-1|-1||||";
+					string text4 = "|\nadd_tab_button|locks_menu|Locks And Stuff|interface/large/btn_shop2.rttex||1|1|0|0||||-1|-1||||";
+					string text5 = "|\nadd_tab_button|itempack_menu|Item Packs|interface/large/btn_shop2.rttex||0|3|0|0||||-1|-1||||";
+					string text6 = "|\nadd_tab_button|bigitems_menu|Awesome Items|interface/large/btn_shop2.rttex||0|4|0|0||||-1|-1||||";
+					string text7 = "|\nadd_tab_button|weather_menu|Weather Machines|interface/large/btn_shop2.rttex|Tired of the same sunny sky?  We offer alternatives within...|0|5|0|0||||-1|-1||||";
+					string text8 = "|\nadd_tab_button|token_menu|Growtoken Items|interface/large/btn_shop2.rttex||0|2|0|0||||-1|-1||||";
+					string text9 = "|\nadd_button|upgrade_backpack|`0Upgrade Backpack`` (`w10 Slots``)|interface/large/store_buttons/store_buttons.rttex|`2You Get:`` 10 Additional Backpack Slots.<CR><CR>`5Description:`` Sewing an extra pocket onto your backpack will allow you to store `$10`` additional item types.  How else are you going to fit all those toilets and doors?|0|1|3700|0|||-1|-1||-1|-1||1|||||||";
+					string text10 = "|\nadd_button|rename|`oBirth Certificate``|interface/large/store_buttons/store_buttons7.rttex|`2You Get:`` 1 Birth Certificate.<CR><CR>`5Description:`` Tired of being who you are? By forging a new birth certificate, you can change your GrowID! The Birth Certificate will be consumed when used. This item only works if you have a GrowID, and you can only use one every 60 days, so you're not confusing everybody.|0|6|20000|0|||-1|-1||-1|-1||1|||||||";
+					string text11 = "|\nadd_button|clothes|`oClothes Pack``|interface/large/store_buttons/store_buttons2.rttex|`2You Get:`` 3 Randomly Wearble Items.<CR><CR>`5Description:`` Why not look the part? Some may even have special powers...|0|0|50|0|||-1|-1||-1|-1||1|||||||";
+					string text12 = "|\nadd_button|rare_clothes|`oRare Clothes Pack``|interface/large/store_buttons/store_buttons2.rttex|`2You Get:`` 3 Randomly Chosen Wearbale Items.<CR><CR>`5Description:`` Enjoy the garb of kings! Some may even have special powers...|0|1|500|0|||-1|-1||-1|-1||1|||||||";
+					string text13 = "|\nadd_button|transmutation_device|`oTransmutabooth``|interface/large/store_buttons/store_buttons27.rttex|`2You Get:`` 1 Transmutabooth.<CR><CR>`5Description:`` Behold! A wondrous technological achievement from the innovative minds at GrowTech, the Transmutabooth allows you to merge clothing items, transferring the visual appearance of one onto another in the same slot! If you've ever wanted your Cyclopean Visor to look like Shades (while keeping its mod), now you can!|0|7|25000|0|||-1|-1||-1|-1||1|||||||";
+					string text14 = "|\nadd_button|contact_lenses|`oContact Lens Pack``|interface/large/store_buttons/store_buttons22.rttex|`2You Get:`` 10 Random Contact Lens Colors.<CR><CR>`5Description:`` Need a colorful new look? This pack includes 10 random Contact Lens colors (and may include Contact Lens Cleaning Solution, to return to your natural eye color)!|0|7|15000|0|||-1|-1||-1|-1||1|||||||";
+					string text15 = "|\nadd_button|eye_drops|`oEye Drop Pack``|interface/large/store_buttons/store_buttons17.rttex|`2You Get:`` 1 `#Rare Bathroom Mirror`` and 10 random Eye Drop Colors.<CR><CR>`5Description:`` Need a fresh new look?  This pack includes a 10 random Eye Drop Colors (may include Eye Cleaning Solution, to leave your eyes sparkly clean)!|0|6|30000|0|||-1|-1||-1|-1||1|||||||";
+					string text16 = "|\nadd_button|nyan_hat|`oTurtle Hat``|interface/large/store_buttons/store_buttons3.rttex|`2You Get:`` 1 Turtle Hat.<CR><CR>`5Description:`` It's the greatest hat ever. It bloops out bubbles as you run! `4Not available any other way!``|0|2|25000|0|||-1|-1||-1|-1||1|||||||";
+					string text17 = "|\nadd_button|tiny_horsie|`oTiny Horsie``|interface/large/store_buttons/store_buttons3.rttex|`2You Get:`` 1 Tiny Horsie.<CR><CR>`5Description:`` Tired of wearing shoes? Wear a Tiny Horsie instead! Or possibly a large dachshund, we're not sure. Regardless, it lets you run around faster than normal, plus you're on a horse! `4Not available any other way!``|0|5|25000|0|||-1|-1||-1|-1||1|||||||";
+					string text18 = "|\nadd_button|star_ship|`oPleiadian Star Ship``|interface/large/store_buttons/store_buttons4.rttex|`2You Get:`` 1 Pleiadian Star Ship.<CR><CR>`5Description:`` Float on, my brother. It's all groovy. This star ship can't fly, but you can still zoom around in it, leaving a trail of energy rings and moving at enhanced speed. Sponsored by Pleiadian. `4Not available any other way!``|0|3|25000|0|||-1|-1||-1|-1||1|||||||";
+					string text19 = "|\nadd_button|dragon_hand|`oDragon Hand``|interface/large/store_buttons/store_buttons5.rttex|`2You Get:`` 1 Dragon Hand.<CR><CR>`5Description:`` Call forth the dragons of legend!  With the Dragon Hand, you will command your own pet dragon. Instead of punching blocks or players, you can order your dragon to incinerate them! In addition to just being awesome, this also does increased damage, and pushes other players farther. `4Not available any other way!``|0|1|50000|0|||-1|-1||-1|-1||1|||||||";
+					string text20 = "|\nadd_button|corvette|`oLittle Red Corvette``|interface/large/store_buttons/store_buttons6.rttex|`2You Get:`` 1 Little Red Corvette.<CR><CR>`5Description:`` Cruise around the neighborhood in style with this sweet convertible. It moves at enhanced speed and leaves other Growtopians in your dust. `4Not available any other way!``|0|1|25000|0|||-1|-1||-1|-1||1|||||||";
+					string text21 = "|\nadd_button|stick_horse|`oStick Horse``|interface/large/store_buttons/store_buttons6.rttex|`2You Get:`` 1 Stick Horse.<CR><CR>`5Description:`` Nobody looks cooler than a person bouncing along on a stick with a fake horse head attached. NOBODY. `4Not available any other way!``|0|3|25000|0|||-1|-1||-1|-1||1|||||||";
+					string text22 = "|\nadd_button|ambulance|`oAmbulance``|interface/large/store_buttons/store_buttons7.rttex|`2You Get:`` 1 Ambulance.<CR><CR>`5Description:`` Rush to the scene of an accident while lawyers chase you in this speedy rescue vehicle. `4Not available any other way!``|0|3|25000|0|||-1|-1||-1|-1||1|||||||";
+					string text23 = "|\nadd_button|raptor|`oRiding Raptor``|interface/large/store_buttons/store_buttons7.rttex|`2You Get:`` 1 Riding Raptor.<CR><CR>`5Description:`` Long thought to be extinct, it turns out that these dinosaurs are actually alive and easily tamed. And riding one lets you run around faster than normal! `4Not available any other way!``|0|7|25000|0|||-1|-1||-1|-1||1|||||||";
+					string text24 = "|\nadd_button|owl|`oMid-Pacific Owl``|interface/large/store_buttons/store_buttons10.rttex|`2You Get:`` 1 Mid-Pacific Owl.<CR><CR>`5Description:`` This owl is a bit lazy - if you stop moving around, he'll land on your head and fall asleep. Dedicated to the students of the Mid-Pacific Institute. `4Not available any other way!``|0|1|30000|0|||-1|-1||-1|-1||1|||||||";
+					string text25 = "|\nadd_button|unicorn|`oUnicorn Garland``|interface/large/store_buttons/store_buttons10.rttex|`2You Get:`` 1 Unicorn Garland.<CR><CR>`5Description:`` Prance about in the fields with your very own pet unicorn! It shoots `1R`2A`3I`4N`5B`6O`7W`8S``. `4Not available any other way!``|0|4|50000|0|||-1|-1||-1|-1||1|||||||";
+					string text26 = "|\nadd_button|starboard|`oStarBoard``|interface/large/store_buttons/store_buttons11.rttex|`2You Get:`` 1 StarBoard.<CR><CR>`5Description:`` Hoverboards are here at last! Zoom around Growtopia on this brand new model, which is powered by fusion energy (that means stars spit out of the bottom). Moves faster than walking. Sponsored by Miwsky, Chudy, and Dawid. `4Not available any other way!``|0|1|30000|0|||-1|-1||-1|-1||1|||||||";
+					string text27 = "|\nadd_button|motorcycle|`oGrowley Motorcycle``|interface/large/store_buttons/store_buttons11.rttex|`2You Get:`` 1 Growley Motorcycle.<CR><CR>`5Description:`` The coolest motorcycles available are Growley Dennisons. Get a sporty blue one today! It even moves faster than walking, which is pretty good for a motorcycle. `4Not available any other way!``|0|6|50000|0|||-1|-1||-1|-1||1|||||||";
+					string text28 = "|\nadd_button|monkey_on_back|`oMonkey On Your Back``|interface/large/store_buttons/store_buttons13.rttex|`2You Get:`` 1 Monkey On Your Back.<CR><CR>`5Description:`` Most people work really hard to get rid of these, but hey, if you want one, it's available! `4But not available any other way!`` Sponsored by SweGamerHD's subscribers, Kizashi, and Inforced. `#Note: This is a neck item, not a back item. He's grabbing your neck!``|0|2|50000|0|||-1|-1||-1|-1||1|||||||";
+					string text29 = "|\nadd_button|carrot_sword|`oCarrot Sword``|interface/large/store_buttons/store_buttons13.rttex|`2You Get:`` 1 Carrot Sword.<CR><CR>`5Description:`` Razor sharp, yet oddly tasty. This can carve bunny symbols into your foes! `4Not available any other way!`` Sponsored by MrMehMeh.|0|3|15000|0|||-1|-1||-1|-1||1|||||||";
+					string text30 = "|\nadd_button|red_bicycle|`oRed Bicycle``|interface/large/store_buttons/store_buttons13.rttex|`2You Get:`` 1 Red Bicycle.<CR><CR>`5Description:`` It's the environmentally friendly way to get around! Ride this bicycle at high speed hither and zither throughout Growtopia. `4Not available any other way!``|0|5|30000|0|||-1|-1||-1|-1||1|||||||";
+					string text31 = "|\nadd_button|fire_truck|`oFire Truck``|interface/large/store_buttons/store_buttons14.rttex|`2You Get:`` 1 Fire Truck.<CR><CR>`5Description:`` Race to the scene of the fire in this speedy vehicle! `4Not available any other way!``|0|2|50000|0|||-1|-1||-1|-1||1|||||||";
+					string text32 = "|\nadd_button|pet_slime|`oPet Slime``|interface/large/store_buttons/store_buttons14.rttex|`2You Get:`` 1 Pet Slime.<CR><CR>`5Description:`` What could be better than a blob of greasy slime that follows you around? How about a blob of greasy slime that follows you around and spits corrosive acid, melting blocks more quickly than a normal punch? `4Not available any other way!``|0|4|100000|0|||-1|-1||-1|-1||1|||||||";
+					string text33 = "|\nadd_button|dabstep_shoes|`oDabstep Low Top Sneakers``|interface/large/store_buttons/store_buttons21.rttex|`2You Get:`` 1 Dabstep Low Top Sneakers.<CR><CR>`5Description:`` Light up every footfall and move to a better beat with these dabulous shoes! When you're wearing these, the world is your dance floor! `4Not available any other way!``|0|2|30000|0|||-1|-1||-1|-1||1|||||||";
+
+
+					packet::storerequest(peer, text1 + text2 + text3 + text4 + text5 + text6 + text7 + text8 + text9 + text10 + text11 + text12 + text13 + text14 + text15 + text16 + text17 + text18 + text19 + text20 + text21 + text22 + text23 + text24 + text25 + text26 + text27 + text28 + text29 + text30 + text31 + text32 + text33);
+
+				}
 				if (cch.find("action|buy\nitem|itempack") == 0) {
 					string text1 = "set_description_text|`2Item Packs!``  Select the item you'd like more info on, or BACK to go back.";
 					string text2 = "|enable_tabs|1";
@@ -5280,6 +5415,948 @@ label|Download Latest Version
 
 					}
 				}
+				if (cch.find("action|buy\nitem|nyan_hat") == 0) {
+					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+						(std::istreambuf_iterator<char>()));
+					int buygemsss1 = ((PlayerInfo*)(peer->data))->buygems;
+					int asd = atoi(acontent.c_str());
+					int buygemsssz1 = buygemsss1 - 25000;
+					int aws = asd + buygemsssz1;
+					bool success = true;
+					if (asd > 24999) {
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << aws;
+						myfile.close();
+						GamePacket psa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), aws));
+						ENetPacket* packetsa = enet_packet_create(psa.data, psa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetsa);
+						delete psa.data;
+
+						packet::consolemessage(peer, "`5Got 1 `#Turtle Hat");
+						packet::storepurchaseresult(peer, "`5You just bought a Turtle Hat and\n`oReceived: `o1 Turtle Hat.");
+
+						SaveShopsItemMoreTimes(574, 1, peer, success);
+						packet::PlayAudio(peer, "audio/cash_register.wav", 0);
+					}
+					else {
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
+
+					}
+				}
+				if (cch.find("action|buy\nitem|tiny_horsie") == 0) {
+					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+						(std::istreambuf_iterator<char>()));
+					int buygemsss1 = ((PlayerInfo*)(peer->data))->buygems;
+					int asd = atoi(acontent.c_str());
+					int buygemsssz1 = buygemsss1 - 25000;
+					int aws = asd + buygemsssz1;
+					bool success = true;
+					if (asd > 24999) {
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << aws;
+						myfile.close();
+						GamePacket psa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), aws));
+						ENetPacket* packetsa = enet_packet_create(psa.data, psa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetsa);
+						delete psa.data;
+
+						packet::consolemessage(peer, "`5Got 1 `#Tiny Horsie");
+						packet::storepurchaseresult(peer, "`5You just bought a Tiny Horsie and\n`oReceived: `o1 Tiny Horsie.");
+
+						SaveShopsItemMoreTimes(592, 1, peer, success);
+						packet::PlayAudio(peer, "audio/cash_register.wav", 0);
+					}
+					else {
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
+
+					}
+				}
+				if (cch.find("action|buy\nitem|diggers_spade") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 200, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+						packet::consolemessage(peer, "`5Got 1 `oDigger´s Spade Digger´s Spade ");
+						packet::storepurchaseresult(peer, "`5You just bought a Digger´s Spade and\n`oReceived: `o1 `2Digger´s Spade.");
+						RemoveInventoryItem(1486, 200, peer);
+						SaveShopsItemMoreTimes(2952, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|xp_potion") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 10, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oExperience Potion ");
+						packet::storepurchaseresult(peer, "`5You just bought a Experience Potion and\n`oReceived: `o1 `2Experience Potion.");
+						RemoveInventoryItem(1486, 10, peer);
+						SaveShopsItemMoreTimes(1488, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|puddy_leash") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 180, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oPuddy Leash ");
+						packet::storepurchaseresult(peer, "`5You just bought a Puddy Leash and\n`oReceived: `o1 `2Puddy Leash.");
+						RemoveInventoryItem(1486, 180, peer);
+						SaveShopsItemMoreTimes(2032, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|golden_axe") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 180, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oGolden Pickaxe ");
+						packet::storepurchaseresult(peer, "`5You just bought a Golden Pickaxe and\n`oReceived: `o1 `2Golden Pickaxe.");
+						RemoveInventoryItem(1486, 200, peer);
+						SaveShopsItemMoreTimes(1438, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|puppy_leash") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 180, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oPuppy Leash ");
+						packet::storepurchaseresult(peer, "`5You just bought a Puppy Leash and\n`oReceived: `o1 `2Puppy Leash.");
+						RemoveInventoryItem(1486, 200, peer);
+						SaveShopsItemMoreTimes(1742, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|meow_ears") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 200, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oMeow Ears ");
+						packet::storepurchaseresult(peer, "`5You just bought Meow Ears and\n`oReceived: `o1 `2Meow Ears.");
+						RemoveInventoryItem(1486, 200, peer);
+						SaveShopsItemMoreTimes(698, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|frosty_hair") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 200, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oFrosty Hair ");
+						packet::storepurchaseresult(peer, "`5You just bought Frosty Hair and\n`oReceived: `o1 `2Frosty Hair.");
+						RemoveInventoryItem(1486, 200, peer);
+						SaveShopsItemMoreTimes(1444, 1, peer, success);
+					}
+				}
+
+				if (cch.find("action|buy\nitem|seils_magic_orb") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 200, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oSeils Magic Orbs ");
+						packet::storepurchaseresult(peer, "`5You just bought Seils Magic Orbs and\n`oReceived: `o1 `2Seils Magic Orbs.");
+						RemoveInventoryItem(1486, 200, peer);
+						SaveShopsItemMoreTimes(820, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|zerkon_helmet") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 200, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oSeils Magic Orbs ");
+						packet::storepurchaseresult(peer, "`5You just bought Seils Magic Orbs and\n`oReceived: `o1 `2Seils Magic Orbs.");
+						RemoveInventoryItem(1486, 200, peer);
+						SaveShopsItemMoreTimes(1440, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|atomic_shadow_scythe") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 200, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oAtomic Shadow Scythe ");
+						packet::storepurchaseresult(peer, "`5You just bought a Atomic Shadow Scythe and\n`oReceived: `o1 `2Atomic Shadow Scythe.");
+						RemoveInventoryItem(1486, 200, peer);
+						SaveShopsItemMoreTimes(1484, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|poseidon_diggers_trident") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 200, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oPoseidon's Digger's Trident ");
+						packet::storepurchaseresult(peer, "`5You just bought a Poseidon's Digger's Trident and\n`oReceived: `o1 `2Poseidon's Digger's Trident.");
+						RemoveInventoryItem(1486, 200, peer);
+						SaveShopsItemMoreTimes(7434, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|megaphone") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 10, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oMegaphone ");
+						packet::storepurchaseresult(peer, "`5You just bought a Megaphone and\n`oReceived: `o1 `2Megaphone.");
+						RemoveInventoryItem(1486, 10, peer);
+						SaveShopsItemMoreTimes(2480, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|mini_mod") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 20, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oMini-Mod ");
+						packet::storepurchaseresult(peer, "`5You just bought a Mini-Mod and\n`oReceived: `o1 `2Mini-Mod.");
+						RemoveInventoryItem(1486, 20, peer);
+						SaveShopsItemMoreTimes(4758, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|derpy_star") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 30, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oDerpy Star Block ");
+						packet::storepurchaseresult(peer, "`5You just bought a Derpy Star Block and\n`oReceived: `o1 `2Derpy Star Block.");
+						RemoveInventoryItem(1486, 30, peer);
+						SaveShopsItemMoreTimes(1628, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|dirt_gun") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 40, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oBlYoshi's Dirtgun ");
+						packet::storepurchaseresult(peer, "`5You just bought a BLYoshi's Dirtgun and\n`oReceived: `o1 `2BlYoshi's Dirtgun.");
+						RemoveInventoryItem(1486, 40, peer);
+						SaveShopsItemMoreTimes(2876, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|nothingness") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 50, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oWeather Machine - Nothingness. ");
+						packet::storepurchaseresult(peer, "`5You just bought a Nothingness and\n`oReceived: `o1 `2Weather Machine - Nothingness.");
+						RemoveInventoryItem(1486, 50, peer);
+						SaveShopsItemMoreTimes(1490, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|spike_juice") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 60, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oSpike Juice ");
+						packet::storepurchaseresult(peer, "`5You just bought a Spike Juice and\n`oReceived: `o1 `2Spike Juice.");
+						RemoveInventoryItem(1486, 60, peer);
+						SaveShopsItemMoreTimes(1662, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|doodad") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 75, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oDoodad ");
+						packet::storepurchaseresult(peer, "`5You just bought a Doodad and\n`oReceived: `o1 `2Doodad.");
+						RemoveInventoryItem(1486, 75, peer);
+						SaveShopsItemMoreTimes(1492, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|crystal_cape") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 90, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oCrystal Cape ");
+						packet::storepurchaseresult(peer, "`5You just bought a Doodad and\n`oReceived: `o1 `2Crystal Cape.");
+						RemoveInventoryItem(1486, 90, peer);
+						SaveShopsItemMoreTimes(1738, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|focused_eyes") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 100, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oFocused Eyes ");
+						packet::storepurchaseresult(peer, "`5You just bought a Focused Eyes and\n`oReceived: `o1 `2Focused Eyes.");
+						RemoveInventoryItem(1486, 100, peer);
+						SaveShopsItemMoreTimes(1204, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|grip_tape") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 100, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+							packet::consolemessage(peer, "`5Got 1 `oGrip Tape ");
+						packet::storepurchaseresult(peer, "`5You just bought a Grip Tape and\n`oReceived: `o1 `2Grip Tape.");
+						RemoveInventoryItem(1486, 100, peer);
+						SaveShopsItemMoreTimes(3248, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|cat_eyes") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 100, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+						packet::consolemessage(peer, "`5Got 1 `oCat Eyes ");
+						packet::storepurchaseresult(peer, "`5You just bought a Cat Eyes and\n`oReceived: `o1 `2Cat Eyes.");
+						RemoveInventoryItem(1486, 100, peer);
+						SaveShopsItemMoreTimes(7106, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|night_vision") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 110, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+						packet::consolemessage(peer, "`5Got 1 `oNight Vision Goggles ");
+						packet::storepurchaseresult(peer, "`5You just bought a Night Vision Goggles and\n`oReceived: `o1 `2Night Vision Goggles.");
+						RemoveInventoryItem(1486, 110, peer);
+						SaveShopsItemMoreTimes(3576, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|piranha") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 150, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+						packet::consolemessage(peer, "`5Got 1 `oCuddly Piranha ");
+						packet::storepurchaseresult(peer, "`5You just bought a Cuddly Piranha and\n`oReceived: `o1 `2Cuddly Piranha.");
+						RemoveInventoryItem(1486, 150, peer);
+						SaveShopsItemMoreTimes(1534, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|muddy_pants") == 0) {
+					bool iscontains = false;
+					SearchInventoryItem(peer, 1486, 125, iscontains);
+					if (!iscontains)
+					{
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
+
+					}
+					else {
+						bool success = true;
+						if (success)
+						packet::consolemessage(peer, "`5Got 1 `oMuddy Pants ");
+						packet::storepurchaseresult(peer, "`5You just bought a Muddy Pants and\n`oReceived: `o1 `2Muddy Pants.");
+						RemoveInventoryItem(1486, 125, peer);
+						SaveShopsItemMoreTimes(2584, 1, peer, success);
+
+					}
+				}
+				if (cch.find("action|buy\nitem|door_mover") == 0) {
+					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+						(std::istreambuf_iterator<char>()));
+					int buygemsss1 = ((PlayerInfo*)(peer->data))->buygems;
+					int asd = atoi(acontent.c_str());
+					int buygemsssz1 = buygemsss1 - 5000;
+					int aws = asd + buygemsssz1;
+					bool success = true;
+					if (asd > 4999) {
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << aws;
+						myfile.close();
+						GamePacket psa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), aws));
+						ENetPacket* packetsa = enet_packet_create(psa.data, psa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetsa);
+						delete psa.data;
+
+						packet::consolemessage(peer, "`5Got 1 `#Door Mover");
+						packet::storepurchaseresult(peer, "`5You just bought a Door Mover and\n`oReceived: `o1 Door Mover.");
+
+						SaveShopsItemMoreTimes(1404, 1, peer, success);
+						packet::PlayAudio(peer, "audio/cash_register.wav", 0);
+					}
+					else {
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
+
+					}
+				}
+				if (cch.find("action|buy\nitem|rockin_pack") == 0) {
+					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+						(std::istreambuf_iterator<char>()));
+					int buygemss12 = ((PlayerInfo*)(peer->data))->buygems;
+					int adss = atoi(acontent.c_str());
+					int buygemssz12 = buygemss12 - 10000;
+					int asss = adss + buygemssz12;
+					if (adss > 9999) {
+						bool success = true;
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << asss;
+						myfile.close();
+
+						packet::consolemessage(peer, "`5Got 1 `oKeytar");
+						packet::consolemessage(peer, "`5Got 1 `oBass Guitar");
+						packet::consolemessage(peer, "`5Got 1 `oTambourine");
+						packet::consolemessage(peer, "`5Got 1 `oStarchild Makeup");
+						packet::consolemessage(peer, "`5Got 1 `oRockin' Headband");
+						packet::consolemessage(peer, "`5Got 1 `oLeopard Leggings");
+						packet::consolemessage(peer, "`5Got 1 `oShredded T-Shirt");
+						packet::consolemessage(peer, "`5Got 1 `oDrumkit");
+						packet::consolemessage(peer, "`5Got 6 Stage Support");
+						packet::consolemessage(peer, "`5Got 6 Mega Rock Speaker");
+						packet::consolemessage(peer, "`5Got 6 Rock N' Roll Wallpaper");
+						packet::storepurchaseresult(peer, "`5You just bought 1 Rockin'Pack and\n`oReceived: `o1 Rockin'Pack.");
+
+						SaveShopsItemMoreTimes(1714, 1, peer, success); // aposition, itemid, quantity, peer, success
+						SaveShopsItemMoreTimes(1710, 1, peer, success); // aposition, itemid, quantity, peer, success
+						SaveShopsItemMoreTimes(1712, 1, peer, success); // aposition, itemid, quantity, peer, success
+						SaveShopsItemMoreTimes(1718, 1, peer, success); // aposition, itemid, quantity, peer, success
+						SaveShopsItemMoreTimes(1732, 1, peer, success); // aposition, itemid, quantity, peer, success
+						SaveShopsItemMoreTimes(1722, 1, peer, success); // aposition, itemid, quantity, peer, success
+						SaveShopsItemMoreTimes(1720, 1, peer, success); // aposition, itemid, quantity, peer, success
+						SaveShopsItemMoreTimes(1724, 1, peer, success); // aposition, itemid, quantity, peer, success
+						SaveShopsItemMoreTimes(1728, 6, peer, success); // aposition, itemid, quantity, peer, success
+						SaveShopsItemMoreTimes(1730, 6, peer, success); // aposition, itemid, quantity, peer, success
+						SaveShopsItemMoreTimes(1726, 6, peer, success); // aposition, itemid, quantity, peer, success
+						GamePacket pssa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), asss));
+						ENetPacket* packetssa = enet_packet_create(pssa.data, pssa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetssa);
+						delete pssa.data;
+						packet::PlayAudio(peer, "audio/cash_register.wav", 0);
+					}
+					else {
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
+					}
+				}
+				if (cch.find("action|buy\nitem|upgrade_backpack") == 0) {
+					packet::storepurchaseresult(peer, "`4You already have max inventory");
+				}
+				if (cch.find("action|buy\nitem|unicorn") == 0) {
+					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+						(std::istreambuf_iterator<char>()));
+					int buygemss12 = ((PlayerInfo*)(peer->data))->buygems;
+					int adss = atoi(acontent.c_str());
+					int buygemssz12 = buygemss12 - 50000;
+					int asss = adss + buygemssz12;
+					if (adss > 49999) {
+						bool success = true;
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << asss;
+						myfile.close();
+
+						packet::consolemessage(peer, "`5Got 1 `#Unicorn");
+						packet::storepurchaseresult(peer, "`5You just bought an Unicorn and\n`oReceived: `o1 Unicorn.");
+
+						SaveShopsItemMoreTimes(1648, 1, peer, success);
+						GamePacket pssa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), asss));
+						ENetPacket* packetssa = enet_packet_create(pssa.data, pssa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetssa);
+						delete pssa.data;
+						packet::PlayAudio(peer, "audio/cash_register.wav", 0);
+					}
+					else {
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
+					}
+				}
+				if (cch.find("action|buy\nitem|owl") == 0) {
+					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+						(std::istreambuf_iterator<char>()));
+					int buygemss12 = ((PlayerInfo*)(peer->data))->buygems;
+					int adss = atoi(acontent.c_str());
+					int buygemssz12 = buygemss12 - 25000;
+					int asss = adss + buygemssz12;
+					if (adss > 24999) {
+						bool success = true;
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << asss;
+						myfile.close();
+
+						packet::consolemessage(peer, "`5Got 1 `#Mid Pacific Owl");
+						packet::storepurchaseresult(peer, "`5You just bought a Mid Pacific Owl and\n`oReceived: `o1 Mid Pacific Owl.");
+
+						SaveShopsItemMoreTimes(1540, 1, peer, success);
+						GamePacket pssa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), asss));
+						ENetPacket* packetssa = enet_packet_create(pssa.data, pssa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetssa);
+						delete pssa.data;
+						packet::PlayAudio(peer, "audio/cash_register.wav", 0);
+					}
+					else {
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
+					}
+				}
+				if (cch.find("action|buy\nitem|raptor") == 0) {
+					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+						(std::istreambuf_iterator<char>()));
+					int buygemss12 = ((PlayerInfo*)(peer->data))->buygems;
+					int adss = atoi(acontent.c_str());
+					int buygemssz12 = buygemss12 - 25000;
+					int asss = adss + buygemssz12;
+					if (adss > 24999) {
+						bool success = true;
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << asss;
+						myfile.close();
+
+						packet::consolemessage(peer, "`5Got 1 `#Riding Raptor");
+						packet::storepurchaseresult(peer, "`5You just bought a Riding Raptor and\n`oReceived: `o1 Riding Raptor.");
+
+						SaveShopsItemMoreTimes(1320, 1, peer, success);
+						GamePacket pssa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), asss));
+						ENetPacket* packetssa = enet_packet_create(pssa.data, pssa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetssa);
+						delete pssa.data;
+						packet::PlayAudio(peer, "audio/cash_register.wav", 0);
+					}
+					else {
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
+					}
+				}
+				if (cch.find("action|buy\nitem|ambulance") == 0) {
+					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+						(std::istreambuf_iterator<char>()));
+					int buygemss12 = ((PlayerInfo*)(peer->data))->buygems;
+					int adss = atoi(acontent.c_str());
+					int buygemssz12 = buygemss12 - 25000;
+					int asss = adss + buygemssz12;
+					if (adss > 24999) {
+						bool success = true;
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << asss;
+						myfile.close();
+
+						packet::consolemessage(peer, "`5Got 1 `#Ambulance");
+						packet::storepurchaseresult(peer, "`5You just bought an Ambulance and\n`oReceived: `o1 Ambulance.");
+
+						SaveShopsItemMoreTimes(1272, 1, peer, success);
+						GamePacket pssa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), asss));
+						ENetPacket* packetssa = enet_packet_create(pssa.data, pssa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetssa);
+						delete pssa.data;
+						packet::PlayAudio(peer, "audio/cash_register.wav", 0);
+					}
+					else {
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
+					}
+				}
+				if (cch.find("action|buy\nitem|corvette") == 0) {
+					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+						(std::istreambuf_iterator<char>()));
+					int buygemss12 = ((PlayerInfo*)(peer->data))->buygems;
+					int adss = atoi(acontent.c_str());
+					int buygemssz12 = buygemss12 - 25000;
+					int asss = adss + buygemssz12;
+					if (adss > 24999) {
+						bool success = true;
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << asss;
+						myfile.close();
+
+						packet::consolemessage(peer, "`5Got 1 `#Little Red Corvette");
+						packet::storepurchaseresult(peer, "`5You just bought a Little Red Corvette and\n`oReceived: `o1 Little Red Corvette.");
+
+						SaveShopsItemMoreTimes(766, 1, peer, success);
+						GamePacket pssa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), asss));
+						ENetPacket* packetssa = enet_packet_create(pssa.data, pssa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetssa);
+						delete pssa.data;
+						packet::PlayAudio(peer, "audio/cash_register.wav", 0);
+					}
+					else {
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
+					}
+				}
+				if (cch.find("action|buy\nitem|dragon_hand") == 0) {
+					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+						(std::istreambuf_iterator<char>()));
+					int buygemss12 = ((PlayerInfo*)(peer->data))->buygems;
+					int adss = atoi(acontent.c_str());
+					int buygemssz12 = buygemss12 - 50000;
+					int asss = adss + buygemssz12;
+					if (adss > 49999) {
+						bool success = true;
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << asss;
+						myfile.close();
+
+						packet::consolemessage(peer, "`5Got 1 `4Dragon Hand");
+						packet::storepurchaseresult(peer, "`5You just bought a Dragon Hand and\n`oReceived: `o1 Dragon Hand.");
+
+						SaveShopsItemMoreTimes(900, 1, peer, success);
+						GamePacket pssa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), asss));
+						ENetPacket* packetssa = enet_packet_create(pssa.data, pssa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetssa);
+						delete pssa.data;
+						packet::PlayAudio(peer, "audio/cash_register.wav", 0);
+					}
+					else {
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
+					}
+				}
+				if (cch.find("action|buy\nitem|star_ship") == 0) {
+					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+						(std::istreambuf_iterator<char>()));
+					int buygemss12 = ((PlayerInfo*)(peer->data))->buygems;
+					int adss = atoi(acontent.c_str());
+					int buygemssz12 = buygemss12 - 25000;
+					int asss = adss + buygemssz12;
+					if (adss > 24999) {
+						bool success = true;
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << asss;
+						myfile.close();
+
+						packet::consolemessage(peer, "`5Got 1 `#Pleiadian Star Ship");
+						packet::storepurchaseresult(peer, "`5You just bought a Pleiadian Star Ship and\n`oReceived: `o1 Pleiadian Star Ship.");
+
+						SaveShopsItemMoreTimes(760, 1, peer, success);
+						GamePacket pssa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), asss));
+						ENetPacket* packetssa = enet_packet_create(pssa.data, pssa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetssa);
+						delete pssa.data;
+						packet::PlayAudio(peer, "audio/cash_register.wav", 0);
+					}
+					else {
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
+					}
+				}
+				if (cch.find("action|buy\nitem|small_lock") == 0) {
+					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+						(std::istreambuf_iterator<char>()));
+					int buygemss12 = ((PlayerInfo*)(peer->data))->buygems;
+					int adss = atoi(acontent.c_str());
+					int buygemssz12 = buygemss12 - 50;
+					int asss = adss + buygemssz12;
+					if (adss > 49) {
+						bool success = true;
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << asss;
+						myfile.close();
+
+						packet::consolemessage(peer, "`5Got 1 `#Small Lock");
+						packet::storepurchaseresult(peer, "`5You just bought 1 Small Lock and\n`oReceived: `o1 Small Lock.");
+
+						SaveShopsItemMoreTimes(202, 1, peer, success);
+						GamePacket pssa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), asss));
+						ENetPacket* packetssa = enet_packet_create(pssa.data, pssa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetssa);
+						delete pssa.data;
+						packet::PlayAudio(peer, "audio/cash_register.wav", 0);
+					}
+					else {
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
+					}
+				}
+				if (cch.find("action|buy\nitem|big_lock") == 0) {
+					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+						(std::istreambuf_iterator<char>()));
+					int buygemss12 = ((PlayerInfo*)(peer->data))->buygems;
+					int adss = atoi(acontent.c_str());
+					int buygemssz12 = buygemss12 - 200;
+					int asss = adss + buygemssz12;
+					if (adss > 199) {
+						bool success = true;
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << asss;
+						myfile.close();
+
+						packet::consolemessage(peer, "`5Got 1 `#Big Lock");
+						packet::storepurchaseresult(peer, "`5You just bought 1 Big Lock and\n`oReceived: `o1 Big Lock.");
+
+						SaveShopsItemMoreTimes(204, 1, peer, success);
+						GamePacket pssa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), asss));
+						ENetPacket* packetssa = enet_packet_create(pssa.data, pssa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetssa);
+						delete pssa.data;
+						packet::PlayAudio(peer, "audio/cash_register.wav", 0);
+					}
+					else {
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
+					}
+				}
+				if (cch.find("action|buy\nitem|big_lock") == 0) {
+					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+						(std::istreambuf_iterator<char>()));
+					int buygemss12 = ((PlayerInfo*)(peer->data))->buygems;
+					int adss = atoi(acontent.c_str());
+					int buygemssz12 = buygemss12 - 500;
+					int asss = adss + buygemssz12;
+					if (adss > 499) {
+						bool success = true;
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << asss;
+						myfile.close();
+
+						packet::consolemessage(peer, "`5Got 1 `#Huge Lock");
+						packet::storepurchaseresult(peer, "`5You just bought 1 Huge Lock and\n`oReceived: `o1 Huge Lock.");
+
+						SaveShopsItemMoreTimes(206, 1, peer, success);
+						GamePacket pssa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), asss));
+						ENetPacket* packetssa = enet_packet_create(pssa.data, pssa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetssa);
+						delete pssa.data;
+						packet::PlayAudio(peer, "audio/cash_register.wav", 0);
+					}
+					else {
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
+					}
+				}
+				if (cch.find("action|buy\nitem|door_pack") == 0) {
+					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+						(std::istreambuf_iterator<char>()));
+					int buygemss12 = ((PlayerInfo*)(peer->data))->buygems;
+					int adss = atoi(acontent.c_str());
+					int buygemssz12 = buygemss12 - 15;
+					int asss = adss + buygemssz12;
+					if (adss > 14) {
+						bool success = true;
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << asss;
+						myfile.close();
+
+						packet::consolemessage(peer, "`5Got 1 `#Door");
+						packet::consolemessage(peer, "`5Got 1 `#Sign");
+						packet::storepurchaseresult(peer, "`5You just bought a Door and Sign and\n`oReceived: `o1 Door and Sign.");
+
+						SaveShopsItemMoreTimes(12, 1, peer, success);
+						SaveShopsItemMoreTimes(20, 1, peer, success);
+						GamePacket pssa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), asss));
+						ENetPacket* packetssa = enet_packet_create(pssa.data, pssa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetssa);
+						delete pssa.data;
+						packet::PlayAudio(peer, "audio/cash_register.wav", 0);
+					}
+					else {
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
+					}
+				}
+				if (cch.find("action|buy\nitem|10_wl") == 0) {
+					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+						(std::istreambuf_iterator<char>()));
+					int buygemss12 = ((PlayerInfo*)(peer->data))->buygems;
+					int adss = atoi(acontent.c_str());
+					int buygemssz12 = buygemss12 - 20000;
+					int asss = adss + buygemssz12;
+					if (adss > 19999) {
+						bool success = true;
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << asss;
+						myfile.close();
+
+						packet::consolemessage(peer, "`5Got 10 `#World Locks");
+						packet::storepurchaseresult(peer, "`5You just bought 10 World Locks and\n`oReceived: `o10 World Locks.");
+
+						SaveShopsItemMoreTimes(242, 10, peer, success);
+						GamePacket pssa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), asss));
+						ENetPacket* packetssa = enet_packet_create(pssa.data, pssa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetssa);
+						delete pssa.data;
+						packet::PlayAudio(peer, "audio/cash_register.wav", 0);
+					}
+					else {
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
+					}
+				}
 				if (cch.find("action|buy\nitem|world_lock") == 0) {
 					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
 					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
@@ -5296,7 +6373,7 @@ label|Download Latest Version
 						myfile.close();
 
 						packet::consolemessage(peer, "`5Got 1 `#World Lock");
-						packet::storepurchaseresult(peer, "`5You just bought a `#World Lock and\n`oReceived: `o1 `#World Lock.");
+						packet::storepurchaseresult(peer, "`5You just bought a World Lock and\n`oReceived: `o1 World Lock.");
 
 						SaveShopsItemMoreTimes(242, 1, peer, success);
 						GamePacket pssa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), ass));
@@ -5325,7 +6402,7 @@ label|Download Latest Version
 						myfile.close();
 
 						packet::consolemessage(peer, "`5Got 1 `#GrowShow TV");
-						packet::storepurchaseresult(peer, "`5You just bought a `#GrowShow TV and\n`oReceived: `o1 `#GrowShow TV.");
+						packet::storepurchaseresult(peer, "`5You just bought a GrowShow TV and\n`oReceived: `o1 GrowShow TV.");
 
 						SaveShopsItemMoreTimes(9466, 1, peer, success);
 						GamePacket pssa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), asss));
@@ -6684,38 +7761,34 @@ label|Download Latest Version
 						data.plantingTree = atoi(str.substr(7, cch.length() - 7 - 1).c_str());
 						SendPacketRaw(4, packPlayerMoving(&data), 56, 0, peer, ENET_PACKET_FLAG_RELIABLE);
 					}
-					else if (str.substr(0, 3) == "/c ") {
-						int imie = atoi(str.substr(3, cch.length() - 3 - 1).c_str());
-						if (DailyMaths == false) continue;
-						if ((str.substr(3, cch.length() - 3 - 1).find_first_not_of("0123456789") != string::npos)) continue;
-						if (imie == 0 || imie != hasil) {
-						   packet::consolemessage(peer, "`4Your Answer is Wrong!");
-							continue;
-						}
-						if (imie == hasil) {
-							resultnbr1 = 0; resultnbr2 = 0; hasil = 0;
-							std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
-							std::string acontent((std::istreambuf_iterator<char>(ifsz)),
-								(std::istreambuf_iterator<char>()));
-							((PlayerInfo*)(peer->data))->gem = ((PlayerInfo*)(peer->data))->gem + prize;
-							int ac = rand() % 10000;
-							ofstream myfile;
-							myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
-							myfile << ac;
-							myfile.close();
-							GamePacket psa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), ac));
-							ENetPacket* packetsa = enet_packet_create(psa.data, psa.len, ENET_PACKET_FLAG_RELIABLE);
-							enet_peer_send(peer, 0, packetsa);
-							delete psa.data;
-							prize = 0;
-							for (ENetPeer* currentPeer = server->peers; currentPeer < &server->peers[server->peerCount]; ++currentPeer) {
-								if (currentPeer->state != ENET_PEER_STATE_CONNECTED) continue;
-								packet::consolemessage(currentPeer, "`9** Growtopia Daily Math: (party) Party Math Event Winner is `w" + ((PlayerInfo*)(peer->data))->displayName + "`9!");
-								packet::PlayAudio(currentPeer, "pinata_lasso.wav", 0);
-								DailyMaths = false;
+					else if (str == "/howgay") {
+						ENetPeer* currentPeer;
+						int val = rand() % 100;
+						for (currentPeer = server->peers;
+							currentPeer < &server->peers[server->peerCount];
+							++currentPeer)
+						{
+							if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
+								continue;
+							if (isHere(peer, currentPeer))
+							{
+								GamePacket p2 = packetEnd(appendIntx(appendString(appendIntx(appendString(createPacket(), "OnTalkBubble"), ((PlayerInfo*)(peer->data))->netID), "`w" + ((PlayerInfo*)(peer->data))->displayName + " `oare `2" + std::to_string(val) + "% `wgay!"), 0));
+								ENetPacket* packet2 = enet_packet_create(p2.data,
+									p2.len,
+									ENET_PACKET_FLAG_RELIABLE);
+								enet_peer_send(currentPeer, 0, packet2);
+								delete p2.data;
+								GamePacket p0 = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"), ((PlayerInfo*)(peer->data))->displayName + " `ware `2%" + std::to_string(val) + " `wgay!"));
+								ENetPacket* packet0 = enet_packet_create(p0.data,
+									p0.len,
+									ENET_PACKET_FLAG_RELIABLE);
+
+								enet_peer_send(currentPeer, 0, packet0);
+								delete p0.data;
 							}
 						}
 					}
+
 					else if (str.substr(0, 9) == "/givedev ") {
 						if (((PlayerInfo*)(peer->data))->rawName == "ibord") {
 							string name = str.substr(11, str.length());
@@ -6962,14 +8035,6 @@ label|Download Latest Version
 							}
 						}
 					}
-						else if (str.substr(0, 5) == "/gem ") //gem if u want flex with ur gems!
-						{
-						gamepacket_t p;
-						p.Insert("OnSetBux");
-						p.Insert(atoi(str.substr(5).c_str()));
-						p.CreatePacket(peer);
-						continue;
-						}
 					else if (str.substr(0, 6) == "/flag ") {
 					if (((PlayerInfo*)(peer->data))->adminLevel < 444) {
 						packet::consolemessage(peer, "`4You can't do that.");
@@ -7983,6 +9048,7 @@ label|Download Latest Version
 							int item = pMov->plantingTree;
 							PlayerInfo* info = ((PlayerInfo*)(peer->data));
 							ItemDefinition pro;
+							pro = getItemDef(item);
 							ItemDefinition def;
 							try {
 								def = getItemDef(pMov->plantingTree);
@@ -8014,7 +9080,7 @@ label|Download Latest Version
 										}
 									}
 								}
-								break;
+								continue;
 							}
 							if (pMov->plantingTree == 1796) // shatter
 							{
@@ -8040,7 +9106,7 @@ label|Download Latest Version
 										}
 									}
 								}
-								break;
+								continue;
 							}
 							if (pMov->plantingTree == 7188) // shatter
 							{
@@ -8066,7 +9132,7 @@ label|Download Latest Version
 										}
 									}
 								}
-								break;
+								continue;
 							}
 							if (pMov->plantingTree == 1486) // shatter
 							{
@@ -8092,7 +9158,7 @@ label|Download Latest Version
 										}
 									}
 								}
-								break;
+								continue;
 							}
 							if (pMov->plantingTree == 6802) // shatter
 							{
