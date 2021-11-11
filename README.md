@@ -93,3 +93,4 @@ https://bit.ly/guckproject
 - Disabled a few things from /find
 - Fixed Growmoji bug
 - Added a few things in store
+- Added a few things new in store
