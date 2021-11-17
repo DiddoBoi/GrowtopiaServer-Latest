@@ -10,3 +10,6 @@ g++ -o "enet server test" "enet server test.cpp" -std=c++11 -L. -lenet -iquote.
 echo Creating directories...
 mkdir -m 777 -p "worlds"
 mkdir -m 777 -p "players"
+mkdir -m 777 -p "inventory"
+mkdir -m 777 -p "guilds"
+mkdir -m 777 -p "gemdb"
