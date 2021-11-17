@@ -30,7 +30,7 @@ Fixing Full Inventory when claim GrowPass :
 - /find and then get any item
 
 Lazy/don't know how to build? You can use this :
-
+https://github.com/Ibord1967/GrowtopiaServer-Latest-EXECUTABLE
 
 Fixing Down After Register :
 You can fix that issue with this way :
