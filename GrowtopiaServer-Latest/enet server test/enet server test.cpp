@@ -105,13 +105,15 @@ ulong _byteswap_ulong(ulong x)
 	// swap adjacent 16-bit blocks
 	x = ((x & 0xFFFF0000FFFF0000) >> 16) | ((x & 0x0000FFFF0000FFFF) << 16);
 	// swap adjacent 8-bit blocks
-	return ((x & 0xFF00FF00FF00FF00) >> 8) | ((x & 0x00FF00FF00FF00FF) << 8);
+	return ((x & 0xFF00FF0
+		
+		0FF00FF00) >> 8) | ((x & 0x00FF00FF00FF00FF) << 8);
 }
 #endif
 
 //configs
 int configPort = 17091;
-string configCDN = "0098/68186/cache/"; 
+string configCDN = "0098/20737/cache//"; 
 
 
 /***bcrypt***/
@@ -756,6 +758,7 @@ struct WorldItem {
 	__int16 background = 0;
 	int breakLevel = 0;
 	long long int breakTime = 0;
+	int PosFind = 0;
 	bool isLocked = false;
 	int displayblock;
 	bool rotatedLeft = false;
@@ -1326,6 +1329,22 @@ void sendConsole(ENetPeer* x, string e) {
 	enet_peer_send(x, 0, packet);
 	delete p.data;
 }
+bool isWorldOwner(ENetPeer* peer, WorldInfo* world) {
+	return ((PlayerInfo*)(peer->data))->rawName == world->owner;
+}
+bool isWorldAdmin(ENetPeer* peer, WorldInfo* world) {
+	const auto uid = ((PlayerInfo*)(peer->data))->rawName;
+	for (const auto i = 0; world->acclist.size();) {
+		const auto x = world->acclist.at(i);
+		if (uid == x.substr(0, x.find("|"))) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	return false;
+}
 void savejson(ENetPeer* peer) {
 	if (((PlayerInfo*)(peer->data))->haveGrowId == true) {
 		PlayerInfo* p5 = ((PlayerInfo*)(peer->data));
@@ -1542,6 +1561,26 @@ void WorldDB::saveRedundant()
 //vector<WorldInfo> worlds;
 WorldDB worldDB;
 
+bool CheckItemMaxed(ENetPeer* peer, int fItemId, int fQuantityAdd) {
+	bool isMaxed = false;
+	for (int i = 0; i < ((PlayerInfo*)(peer->data))->inventory.items.size(); i++) {
+		if (((PlayerInfo*)(peer->data))->inventory.items.at(i).itemID == fItemId && ((PlayerInfo*)(peer->data))->inventory.items.at(i).itemCount + fQuantityAdd > 200) {
+			isMaxed = true;
+			break;
+		}
+	}
+	return isMaxed;
+}
+bool CheckItemExists(ENetPeer* peer, const int fItemId) {
+	auto isExists = false;
+	for (auto i = 0; i < ((PlayerInfo*)(peer->data))->inventory.items.size(); i++) {
+		if (((PlayerInfo*)(peer->data))->inventory.items.at(i).itemID == fItemId) {
+			isExists = true;
+			break;
+		}
+	}
+	return isExists;
+}
 void saveAllWorlds() // atexit hack plz fix
 {
 	GamePacket p0 = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"),
@@ -2103,6 +2142,24 @@ void buildItemsDatabase()
 void showWrong(ENetPeer* peer, string listFull, string itemFind) {
 	packet::dialog(peer, "add_label_with_icon|big|`wFind item: " + itemFind + "``|left|3802|\nadd_spacer|small|\n" + listFull + "add_textbox|Enter a word below to find the item|\nadd_text_input|item|Item Name||30|\nend_dialog|findid|Cancel|Find the item!|\n");
 }
+void PathFindingCore(ENetPeer* peer, int xs, int ys)
+{
+
+	try {
+		int Square = xs + (ys * 100); // 100 = Width World lu
+		string gayname = ((PlayerInfo*)(peer->data))->rawName;
+		WorldInfo* world = getPlyersWorld(peer);
+		if (world->items[Square].PosFind == Square)
+		{
+			packet::consolemessage(peer, "`4[CHEAT DETECTED] " + gayname + " STOP CHEATING!");
+			enet_peer_disconnect_later(peer, 0);
+		}
+
+	}
+	catch (const std::out_of_range& e) {
+		std::cout << e.what() << std::endl;
+	}
+}
 
 void LoadCaptCha() {
 	for (ENetPeer* currentPeer = server->peers; currentPeer < &server->peers[server->peerCount]; ++currentPeer) {
@@ -2600,6 +2657,56 @@ void SearchInventoryItem(ENetPeer* peer, int fItemid, int fQuantity, bool& iscon
 			break;
 		}
 	}
+}
+void SaveFindsItem(int fItemid, int fQuantity, ENetPeer* peer)
+{
+
+	std::ifstream iffff("inventory/" + ((PlayerInfo*)(peer->data))->rawName + ".json");
+
+	json jj;
+
+	if (iffff.fail()) {
+		iffff.close();
+
+
+	}
+	if (iffff.is_open()) {
+
+
+	}
+
+	iffff >> jj; //load
+
+
+	std::ofstream oo("inventory/" + ((PlayerInfo*)(peer->data))->rawName + ".json");
+	if (!oo.is_open()) {
+		cout << GetLastError() << endl;
+		_getch();
+	}
+
+	//jj["items"][aposition]["aposition"] = aposition;
+
+	for (int i = 0; i < ((PlayerInfo*)(peer->data))->currentInventorySize; i++)
+	{
+		int itemid = jj["items"][i]["itemid"];
+		int quantity = jj["items"][i]["quantity"];
+		if (itemid == 0 && quantity == 0)
+		{
+			jj["items"][i]["itemid"] = fItemid;
+			jj["items"][i]["quantity"] = fQuantity;
+			break;
+		}
+
+	}
+	oo << jj << std::endl;
+
+
+	InventoryItem item;
+	item.itemID = fItemid;
+	item.itemCount = fQuantity;
+	((PlayerInfo*)(peer->data))->inventory.items.push_back(item);
+
+	sendInventory(peer, ((PlayerInfo*)(peer->data))->inventory);
 }
 void SaveShopsItemMoreTimes(int fItemid, int fQuantity, ENetPeer* peer, bool& success)
 {
@@ -3758,358 +3865,372 @@ void loadnews() {
 		
 		if (tile == 32) {
 			if (world->items[x + (y * world->width)].foreground == 5958) {
-				packet::dialog(peer, "add_label_with_icon|big|`wEpoch Weather Machine|left|5958|\nadd_textbox|`oSelect Your Doom:|\nadd_spacer|small|\nadd_checkbox|epochice|ice|" + to_string(world->ice) + "|\nadd_checkbox|epochvol|Volcano|" + to_string(world->volcano) + "|\nadd_checkbox|epochland|Land|" + to_string(world->land) + "|\nend_dialog|epochweather|Cancel|OK|");
+				packet::dialog(peer, "add_label_with_icon|big|`wEpoch Machine|left|5958|\nadd_spacer|small|\nadd_textbox|`oSelect Your Doom:|\nadd_spacer|small|\nadd_checkbox|epochice|Ice Age|" + to_string(world->ice) + "|\nadd_checkbox|epochvol|Volcano|" + to_string(world->volcano) + "|\nadd_checkbox|epochland|Floating Islands|" + to_string(world->land) + "|\nadd_text_input|buycount|Cycle time (minutes): |0|3|\nend_dialog|epochweather|Cancel|OK|");
 			}
 		}
-		if (world->items[x + (y * world->width)].foreground == 340) {
-			world->items[x + (y * world->width)].foreground = 0;
-			int valgems = 0;
-			valgems = rand() % 1000;
-			int valgem = rand() % 1000;
-			valgem = valgems + 1;
-			std::ifstream ifs("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
-			std::string content((std::istreambuf_iterator<char>(ifs)),
-				(std::istreambuf_iterator<char>()));
+
+		if (tile == 18) {
+			if (world->owner == "" || isWorldOwner(peer, world) || isWorldAdmin(peer, world) || getPlyersWorld(peer)->isPublic) {
+				if (world->items[x + (y * world->width)].foreground == 340) {
+					world->items[x + (y * world->width)].foreground = 0;
+					int valgems = 0;
+					valgems = rand() % 1000;
+					int valgem = rand() % 1000;
+					valgem = valgems + 1;
+					std::ifstream ifs("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string content((std::istreambuf_iterator<char>(ifs)),
+						(std::istreambuf_iterator<char>()));
 
 
-			int gembux = atoi(content.c_str());
-			int fingembux = gembux + valgem;
-			ofstream myfile;
-			myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
-			myfile << fingembux;
-			myfile.close();
+					int gembux = atoi(content.c_str());
+					int fingembux = gembux + valgem;
+					ofstream myfile;
+					myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					myfile << fingembux;
+					myfile.close();
 
-			int gemcalc = gembux + valgem;
-			GamePacket pp = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), gemcalc));
-			ENetPacket* packetpp = enet_packet_create(pp.data,
-				pp.len,
-				ENET_PACKET_FLAG_RELIABLE);
+					int gemcalc = gembux + valgem;
+					GamePacket pp = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), gemcalc));
+					ENetPacket* packetpp = enet_packet_create(pp.data,
+						pp.len,
+						ENET_PACKET_FLAG_RELIABLE);
 
-			enet_peer_send(peer, 0, packetpp);
-			delete pp.data;
-		}
-		if (world->items[x + (y * world->width)].foreground == 1210) {
-			if (world->weather == 8) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 8;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+					enet_peer_send(peer, 0, packetpp);
+					delete pp.data;
+				}
+				if (world->items[x + (y * world->width)].foreground == 1210) {
+					if (world->weather == 8) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 8;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
+				if (world->items[x + (y * world->width)].foreground == 5958) {
+					if (world->weather == 38) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 38;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
+				if (world->items[x + (y * world->width)].foreground == 2284) {
+					if (world->weather == 18) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 18;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 2284) {
-			if (world->weather == 18) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 18;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 3832) {
+					if (world->weather == 29) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 29;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 3832) {
-			if (world->weather == 29) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 29;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 984) {
+					if (world->weather == 5) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 5;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 984) {
-			if (world->weather == 5) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 5;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 946) {
+					if (world->weather == 3) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 3;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 946) {
-			if (world->weather == 3) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 3;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 934) {
+					if (world->weather == 2) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 2;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 934) {
-			if (world->weather == 2) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 2;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 3252) {
+					if (world->weather == 20) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 20;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 3252) {
-			if (world->weather == 20) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 20;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 7644) {
+					if (world->weather == 44) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 44;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 7644) {
-			if (world->weather == 44) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 44;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 6854) {
+					if (world->weather == 42) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 42;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 6854) {
-			if (world->weather == 42) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 42;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 5716) {
+					if (world->weather == 37) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 37;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 5716) {
-			if (world->weather == 37) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 37;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 5654) {
+					if (world->weather == 36) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 36;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 5654) {
-			if (world->weather == 36) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 36;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 8896) {
+					if (world->weather == 47) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 47;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 8896) {
-			if (world->weather == 47) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 47;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 8836) {
+					if (world->weather == 48) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 48;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 8836) {
-			if (world->weather == 48) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 48;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 5112) {
+					if (world->weather == 35) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 35;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 5112) {
-			if (world->weather == 35) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 35;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 5000) {
+					if (world->weather == 34) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 34;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 5000) {
-			if (world->weather == 34) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 34;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 4892) {
+					if (world->weather == 33) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 33;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 4892) {
-			if (world->weather == 33) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 33;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 4776) {
+					if (world->weather == 32) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 32;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 4776) {
-			if (world->weather == 32) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 32;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 4486) {
+					if (world->weather == 31) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 31;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 4486) {
-			if (world->weather == 31) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 31;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 4242) {
+					if (world->weather == 30) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 30;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 4242) {
-			if (world->weather == 30) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 30;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 1490) {
+					if (world->weather == 10) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 10;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 1490) {
-			if (world->weather == 10) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 10;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 3694) {
+					if (world->weather == 28) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 28;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 3694) {
-			if (world->weather == 28) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 28;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 3534) {
+					if (world->weather == 22) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 22;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 3534) {
-			if (world->weather == 22) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 22;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 3446) {
+					if (world->weather == 21) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 21;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 3446) {
-			if (world->weather == 21) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 21;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 2284) {
+					if (world->weather == 18) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 18;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 2284) {
-			if (world->weather == 18) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 18;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 2046) {
+					if (world->weather == 17) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 17;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 2046) {
-			if (world->weather == 17) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 17;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 1750) {
+					if (world->weather == 15) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 15;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 1750) {
-			if (world->weather == 15) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 15;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 1364) {
+					if (world->weather == 11) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 11;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 1364) {
-			if (world->weather == 11) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 11;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 932) {
+					if (world->weather == 4) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 4;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
 
-		if (world->items[x + (y * world->width)].foreground == 932) {
-			if (world->weather == 4) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 4;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
+				if (world->items[x + (y * world->width)].foreground == 10286) {
+					if (world->weather == 51) {
+						world->weather = 0;
+					}
+					else {
+						world->weather = 51;
+					}
+					OnSetCurrentWeather(peer, world->weather);
+				}
+				if (world->items[x + (y * world->width)].foreground == 9350) {
 
-		if (world->items[x + (y * world->width)].foreground == 10286) {
-			if (world->weather == 51) {
-				world->weather = 0;
-			}
-			else {
-				world->weather = 51;
-			}
-			OnSetCurrentWeather(peer, world->weather);
-		}
-		if (world->items[x + (y * world->width)].foreground == 9350) {
+					int premwl = ((PlayerInfo*)(peer->data))->premwl;
 
-			int premwl = ((PlayerInfo*)(peer->data))->premwl;
+					int valwls = 0;
+					int valwl;
+					valwls = rand() % 10;
+					valwl = valwls + 1;
+					((PlayerInfo*)(peer->data))->premwl = premwl + valwl;
 
-			int valwls = 0;
-			int valwl;
-			valwls = rand() % 10;
-			valwl = valwls + 1;
-			((PlayerInfo*)(peer->data))->premwl = premwl + valwl;
-			std::ifstream ifff("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json");
+					string message1 = "`9You found `2" + to_string(valwl) + " `9Premium WLS";
+					packet::SendTalkSelf(peer, message1);
+					std::ifstream ifff("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json");
 
 
-			if (ifff.fail()) {
-				ifff.close();
+					if (ifff.fail()) {
+						ifff.close();
 
 
+					}
+					if (ifff.is_open()) {
+					}
+					json j;
+					ifff >> j; //load
+
+
+					j["premwl"] = ((PlayerInfo*)(peer->data))->premwl;
+					std::ofstream o("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json"); //save
+					if (!o.is_open()) {
+						cout << GetLastError() << endl;
+						_getch();
+					}
+
+					o << j << std::endl;
+				}
 			}
-			if (ifff.is_open()) {
-			}
-			json j;
-			ifff >> j; //load
-
-
-			j["premwl"] = ((PlayerInfo*)(peer->data))->premwl;
-			std::ofstream o("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json"); //save
-			if (!o.is_open()) {
-				cout << GetLastError() << endl;
-				_getch();
-			}
-
-			o << j << std::endl;
-			string message1 = "`9You found `2" + to_string(valwl) + " `9Premium WLS";
-			packet::SendTalkSelf(peer, message1);
 		}
 
 		if (tile == 822) {
@@ -4719,6 +4840,15 @@ void loadnews() {
 			m_uid.shared_uid = (((PlayerInfo*)(peer->data)))->last_uid++;
 			(((PlayerInfo*)(peer->data)))->item_uids.push_back(m_uid);
 		}
+		for (int i = 0; i < xSize; i++) {
+			for (int j = 0; j < ySize; j++) {
+				int squaresign = i + (j * 100);
+				if (getItemDef(worldInfo->items[squaresign].foreground).collisionType != 0)
+				{
+					worldInfo->items[squaresign].PosFind = squaresign;
+				}
+			}
+		}
 	}
 
 	void sendAction(ENetPeer* peer, int netID, string action)
@@ -4808,7 +4938,8 @@ void loadConfig() {
 	/*inside config.json:
 	{
 	"port": 17091,
-	"cdn": "0098/CDNContent37/cache/"
+	"cdn": "0098/CDNContent37/
+	"
 	}
 	*/
 	
@@ -5097,8 +5228,8 @@ label|Download Latest Version
 					((PlayerInfo*)(peer->data))->skinColor = id;
 					sendClothes(peer);
 				}
-				string buyHdrText = "action|buy\nitem|";
-				if (cch.find(buyHdrText) == 0)
+
+				if (cch.find("action|buy\nitem|store") == 0)
 				{
 					string text1 = "set_description_text|Welcome to the `2Growtopia Store``! Select the item you'd like more info on.`o `wWant to get `5Supporter`` status? Any Gem purchase (or `57,000`` Gems earned with free `5Tapjoy`` offers) will make you one. You'll get new skin colors, the `5Recycle`` tool to convert unwanted items into Gems, and more bonuses!";
 					string text2 = "|enable_tabs|1";
@@ -5138,7 +5269,7 @@ label|Download Latest Version
 				}*/
 					packet::storerequest(peer, text1 + text2 + text3 + text4 + text5 + text6 + text7 + text8 + text9 + text10 + text11 + text12 + text13 + text14 + text15 + text16 + text17 + text18 + text19 + text20 + text21 + text22);
 				}
-				if (cch.find("action|buy\nitem|locks_menu") == 0) {
+				if (cch.find("action|buy\nitem|locks") == 0) {
 					string text1 = "set_description_text|`2Locks And Stuff!``  Select the item you'd like more info on, or BACK to go back.";
 					string text2 = "|enable_tabs|1";
 					string text3 = "|\nadd_tab_button|store_menu|Home|interface/large/btn_shop2.rttex||0|0|0|0||||-1|-1||||";
@@ -5530,23 +5661,21 @@ label|Download Latest Version
 					}
 				}
 				if (cch.find("action|buy\nitem|golden_axe") == 0) {
-					bool iscontains = false;
-					SearchInventoryItem(peer, 1486, 180, iscontains);
+					auto iscontains = false;
+					SearchInventoryItem(peer, 1486, 200, iscontains);
 					if (!iscontains)
 					{
-						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
-
+						RemoveInventoryItem(1486, 200, peer);
+						bool success = true;
+						packet::PlayAudio(peer, "audio/piano_nice.wav", 0);
+						SaveShopsItemMoreTimes(1438, 1, peer, success);
+						packet::consolemessage(peer, "`5Got 1 `oGolden Pickaxe ");
+						packet::storepurchaseresult(peer, "`5You just bought a Golden Pickaxe and\n`oReceived: `o1 `2Golden Pickaxe.");
 					}
 					else {
-						bool success = true;
-						if (success)
-							packet::consolemessage(peer, "`5Got 1 `oGolden Pickaxe ");
-						packet::storepurchaseresult(peer, "`5You just bought a Golden Pickaxe and\n`oReceived: `o1 `2Golden Pickaxe.");
-						RemoveInventoryItem(1486, 200, peer);
-						SaveShopsItemMoreTimes(1438, 1, peer, success);
-
+						packet::storepurchaseresult(peer, "You don't have enough Growtoken to buy this item.");
 					}
-				}
+					}
 				if (cch.find("action|buy\nitem|puppy_leash") == 0) {
 					bool iscontains = false;
 					SearchInventoryItem(peer, 1486, 180, iscontains);
@@ -5818,21 +5947,39 @@ label|Download Latest Version
 					}
 				}
 				if (cch.find("action|buy\nitem|focused_eyes") == 0) {
-					bool iscontains = false;
-					SearchInventoryItem(peer, 1486, 100, iscontains);
-					if (!iscontains)
-					{
-						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Tokens To Buy This Items. `5Try again later.");
-
+					auto Price = 200;
+					PlayerInfo* pData = ((PlayerInfo*)(peer->data));
+					auto ItemID = 1204;
+					auto count = 1;
+					auto contains = false;
+					auto KiekTuri = 0;
+					try {
+						for (auto i = 0; i < pData->inventory.items.size(); i++) {
+							if (pData->inventory.items.at(i).itemID == 1486 && pData->inventory.items.at(i).itemCount >= 1) {
+								KiekTuri = pData->inventory.items.at(i).itemCount;
+								break;
+							}
+						}
+					}
+					catch (const std::out_of_range& e) {
+						std::cout << e.what() << std::endl;
+					}
+					SearchInventoryItem(peer, 1486, Price, contains);
+					if (contains) {
+						if (CheckItemMaxed(peer, ItemID, count) || pData->inventory.items.size() + 1 >= pData->currentInventorySize && CheckItemExists(peer, ItemID) && CheckItemMaxed(peer, ItemID, 1) || pData->inventory.items.size() + 1 >= pData->currentInventorySize && !CheckItemExists(peer, ItemID)) {
+							packet::PlayAudio(peer, "audio/bleep_fail.wav", 0);
+							packet::storepurchaseresult(peer, "You don't have enough space in your inventory that. You may be carrying to many of one of the items you are trying to purchase or you don't have enough free spaces to fit them all in your backpack!");
+							break;
+						}
+						RemoveInventoryItem(1486, Price, peer);
+						bool success = true;
+						SaveShopsItemMoreTimes(ItemID, count, peer, success);
+						packet::PlayAudio(peer, "audio/piano_nice.wav", 0);
+						packet::storepurchaseresult(peer, "You've purchased " + to_string(count) + " `o" + getItemDef(ItemID).name + " `wfor `$" + to_string(Price) + " `wGrowtokens.\nYou have `$" + to_string(KiekTuri - Price) + " `wGrowtokens left.\n\n`5Received: ``" + to_string(count) + " " + getItemDef(ItemID).name + "");
 					}
 					else {
-						bool success = true;
-						if (success)
-							packet::consolemessage(peer, "`5Got 1 `oFocused Eyes ");
-						packet::storepurchaseresult(peer, "`5You just bought a Focused Eyes and\n`oReceived: `o1 `2Focused Eyes.");
-						RemoveInventoryItem(1486, 100, peer);
-						SaveShopsItemMoreTimes(1204, 1, peer, success);
-
+						packet::PlayAudio(peer, "audio/bleep_fail.wav", 0);
+						packet::storepurchaseresult(peer, "You can't afford `o" + getItemDef(ItemID).name + "``!  You're `$" + to_string(Price - KiekTuri) + "`` Growtokens short.");
 					}
 				}
 				if (cch.find("action|buy\nitem|grip_tape") == 0) {
@@ -6357,6 +6504,35 @@ label|Download Latest Version
 						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
 					}
 				}
+				if (cch.find("action|buy\nitem|vending_machine") == 0) {
+					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
+						(std::istreambuf_iterator<char>()));
+					int buygemss12 = ((PlayerInfo*)(peer->data))->buygems;
+					int adss = atoi(acontent.c_str());
+					int buygemssz12 = buygemss12 - 8000;
+					int asss = adss + buygemssz12;
+					if (adss > 7999) {
+						bool success = true;
+						ofstream myfile;
+						myfile.open("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
+						myfile << asss;
+						myfile.close();
+
+						packet::consolemessage(peer, "`5Got 1 `#Vending Machine");
+						packet::storepurchaseresult(peer, "`5You just bought 1 Vending Machine and\n`oReceived: `o1 Vending Machine.");
+
+						SaveShopsItemMoreTimes(242, 10, peer, success);
+						GamePacket pssa = packetEnd(appendInt(appendString(createPacket(), "OnSetBux"), asss));
+						ENetPacket* packetssa = enet_packet_create(pssa.data, pssa.len, ENET_PACKET_FLAG_RELIABLE);
+						enet_peer_send(peer, 0, packetssa);
+						delete pssa.data;
+						packet::PlayAudio(peer, "audio/cash_register.wav", 0);
+					}
+					else {
+						packet::storepurchaseresult(peer, "`4Purchase Failed: You Don't Have Enough Gems To Buy This Items. `5Try again later.");
+					}
+				}
 				if (cch.find("action|buy\nitem|world_lock") == 0) {
 					std::ifstream ifsz("gemdb/" + ((PlayerInfo*)(peer->data))->rawName + ".txt");
 					std::string acontent((std::istreambuf_iterator<char>(ifsz)),
@@ -6506,7 +6682,7 @@ label|Download Latest Version
 					packet::dialog(peer, "set_default_color|`o\n\nadd_label_with_icon|big|`wGet a GrowID``|left|206|\n\nadd_spacer|small|\nadd_textbox|A `wGrowID `wmeans `oyou can use a name and password to logon from any device.|\nadd_spacer|small|\nadd_textbox|This `wname `owill be reserved for you and `wshown to other players`o, so choose carefully!|\nadd_text_input|username|GrowID||30|\nadd_text_input|password|Password||100|\nadd_text_input|passwordverify|Password Verify||100|\nadd_textbox|Your `wemail address `owill only be used for account verification purposes and won't be spammed or shared. If you use a fake email, you'll never be able to recover or change your password.|\nadd_text_input|email|Email||100|\nadd_textbox|Your `wDiscord ID `owill be used for secondary verification if you lost access to your `wemail address`o! Please enter in such format: `wdiscordname#tag`o. Your `wDiscord Tag `ocan be found in your `wDiscord account settings`o.|\nadd_text_input|discord|Discord||100|\nend_dialog|register|Cancel|Get My GrowID!|\n");
 #endif
 				}
-				if (cch.find("action|store") == 0)
+				if (cch.find("action|store\nlocation|gem") == 0)
 				{
 				string text1 = "set_description_text|Welcome to the `2Growtopia Store``! Select the item you'd like more info on.`o `wWant to get `5Supporter`` status? Any Gem purchase (or `57,000`` Gems earned with free `5Tapjoy`` offers) will make you one. You'll get new skin colors, the `5Recycle`` tool to convert unwanted items into Gems, and more bonuses!";
 				string text2 = "|enable_tabs|1";
@@ -6599,6 +6775,8 @@ label|Download Latest Version
 					string textlevel = "";
 					bool levels = false;
 					bool gems = false;
+					bool cbox1 = false;
+					int cboxEpoch = 0;
 					bool gacha = false;
 					bool isBuyItemDialog = false;
 					string textgems = "";
@@ -6746,6 +6924,9 @@ label|Download Latest Version
 					if (isFindDialog && btn.substr(0, 4) == "tool") {
 						if (has_only_digits(btn.substr(4, btn.length() - 4)) == false) break;
 						int id = atoi(btn.substr(4, btn.length() - 4).c_str());
+						int intid = atoi(btn.substr(4, btn.length() - 4).c_str());
+						bool iscontains = false;
+						string ide = btn.substr(4, btn.length() - 4).c_str();
 						ItemDefinition gaydef;
 						gaydef = getItemDef(id);
 
@@ -6754,38 +6935,41 @@ label|Download Latest Version
 								packet::consolemessage(peer, "`4You must purchase this item");
 								break;
 							}
-							else {
-
-							}
+							else {}
 						}
-						string finddialog = "add_label_with_icon|big|`wFound Item:``|left|6016|\nadd_spacer|small|\nadd_label_with_icon|small|`w" + gaydef.name + "``|left|" + to_string(gaydef.id) + "|\nadd_textbox|`oID Items `w" + to_string(gaydef.id) + "``|\nadd_spacer|small|\nadd_textbox|`oIf you are done click `9Close`o, else you can click  `2Find `o to find item again.|\nadd_spacer|small|\nadd_button|isfinddialog|`2Find``|noflags|0|0|\nend_dialog|gazette|`wClose|";
-						packet::dialog(peer, finddialog);
-
-
-							packet::consolemessage(peer, "`oitem `^" + gaydef.name + " `o(`^" + to_string(gaydef.id) + "`o) has been `2added `oto your inventory.");
-							size_t invsize = 200;
-							if (((PlayerInfo*)(peer->data))->inventory.items.size() == invsize) {
-								PlayerInventory inventory;
-								InventoryItem item;
-								item.itemID = id;
-								item.itemCount = 200;
-								inventory.items.push_back(item);
-								item.itemCount = 1;
-								item.itemID = 18;
-								inventory.items.push_back(item);
-								item.itemID = 32;
-								inventory.items.push_back(item);
-								((PlayerInfo*)(peer->data))->inventory = inventory;
-
+						if (id == 10456 || id == 7480 || id == 112 || id == 1790 || id == 1900 || id == 6336) {
+							if (((PlayerInfo*)(peer->data))->adminLevel < 1337) {
+								packet::consolemessage(peer, "This item is to heavy for you!");
+								break;
 							}
 							else {
-								InventoryItem item;
-								item.itemID = id;
-								item.itemCount = 200;
-								((PlayerInfo*)(peer->data))->inventory.items.push_back(item);
 							}
-							sendInventory(peer, ((PlayerInfo*)(peer->data))->inventory);
 						}
+						for (int i = 0; i < ((PlayerInfo*)(peer->data))->inventory.items.size(); i++) {
+							if (((PlayerInfo*)(peer->data))->inventory.items.at(i).itemID == intid) {
+								packet::consolemessage(peer, "`oSorry! Your inventory already contains this item!");
+								iscontains = true;
+							}
+						}
+						if (iscontains) {
+							iscontains = false;
+							continue;
+						}
+						if (CheckItemMaxed(peer, id, 200)) {
+							packet::consolemessage(peer, "You already reached the max count of the item!");
+							continue;
+						}
+						bool success = true;
+						if (((PlayerInfo*)(peer->data))->adminLevel == 1337) {
+							packet::consolemessage(peer, "`oItem `w" + getItemDef(intid).name + " `o(`w" + ide + "`o) With rarity : `o(`w" + std::to_string(getItemDef(intid).rarity) + "`o) `ohas been `2added `oto your inventory");
+							packet::dialog(peer, "add_label_with_icon|big|`wItem Finder``|left|6016|\nadd_spacer|small|\nadd_label|small|`$Items Found :|left|\nadd_label_with_icon|small|`c" + getItemDef(intid).name + "``|left|" + ide + "|\nadd_textbox|`$Items ID `o[`c" + ide + "`o]``|\nadd_spacer|small|\nadd_textbox|`2Find Again :|\nadd_textbox|`$Enter a word below to find the item|\nadd_text_input|item|Item Name||30|\nend_dialog|findid|Cancel|`2Find the item!|\nadd_quick_exit|");
+						}
+						else {
+							packet::consolemessage(peer, "`oItem `w" + getItemDef(intid).name + " `oWith rarity : `o(`w" + std::to_string(getItemDef(intid).rarity) + "`o) `ohas been `2added `oto your inventory");
+							packet::dialog(peer, "add_label_with_icon|big|`wItem Finder``|left|6016|\nadd_spacer|small|\nadd_label|small|`$Items Found :|left|\nadd_label_with_icon|small|`c" + getItemDef(intid).name + "``|left|" + ide + "|\nadd_spacer|small|\nadd_textbox|`2Find Again :|\nadd_textbox|`$Enter a word below to find the item|\nadd_text_input|item|Item Name||30|\nend_dialog|findid|Cancel|`2Find the item!|\nadd_quick_exit|");
+						}
+						SaveShopsItemMoreTimes(intid, 200, peer, success);
+					}
 
 					else if (isFindDialog) {
 						string itemLower2;
@@ -8536,9 +8720,13 @@ label|Download Latest Version
 							packet::consolemessage(peer, "`4You can't do that.");
 							continue;
 						}
+						bool success = true;
+
+						int itemID = atoi(str.substr(6, cch.length() - 6 - 1).c_str());
+						SaveShopsItemMoreTimes(itemID, 200, peer, success);
+
 						PlayerInventory inventory = ((PlayerInfo *)(peer->data))->inventory;
 						InventoryItem item;
-						int itemID = atoi(str.substr(6, cch.length() - 6 - 1).c_str());
 						if (itemID != 112 && itemID != 18 && itemID != 32) {
 							item.itemID = itemID;
 							item.itemCount = 200;
@@ -8603,7 +8791,7 @@ label|Download Latest Version
 					p.Insert("ubistatic-a.akamaihd.net");
 					p.Insert(configCDN);
 					p.Insert("cc.cz.madkite.freedom org.aqua.gg idv.aqua.bulldog com.cih.gamecih2 com.cih.gamecih com.cih.game_cih cn.maocai.gamekiller com.gmd.speedtime org.dax.attack com.x0.strai.frep com.x0.strai.free org.cheatengine.cegui org.sbtools.gamehack com.skgames.traffikrider org.sbtoods.gamehaca com.skype.ralder org.cheatengine.cegui.xx.multi1458919170111 com.prohiro.macro me.autotouch.autotouch com.cygery.repetitouch.free com.cygery.repetitouch.pro com.proziro.zacro com.slash.gamebuster");
-					p.Insert("proto=147|choosemusic=audio/mp3/about_theme.mp3|active_holiday=0|server_tick=226933875|clash_active=0|drop_lavacheck_faster=1|isPayingUser=0|");
+					p.Insert("proto=149|choosemusic=audio/mp3/about_theme.mp3|active_holiday=0|server_tick=226933875|clash_active=0|drop_lavacheck_faster=1|isPayingUser=0|");
 					p.CreatePacket(peer);
 					
 					std::stringstream ss(GetTextPointerFromPacket(event.packet));
@@ -9080,7 +9268,7 @@ label|Download Latest Version
 										}
 									}
 								}
-								continue;
+								break;
 							}
 							if (pMov->plantingTree == 1796) // shatter
 							{
@@ -9106,7 +9294,7 @@ label|Download Latest Version
 										}
 									}
 								}
-								continue;
+								break;
 							}
 							if (pMov->plantingTree == 7188) // shatter
 							{
