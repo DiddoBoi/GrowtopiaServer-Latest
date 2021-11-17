@@ -29,6 +29,9 @@ Fixing Crashed Enet issue :
 Fixing Full Inventory when claim GrowPass :
 - /find and then get any item
 
+Lazy/don't know how to build? You can use this :
+
+
 Fixing Down After Register :
 You can fix that issue with this way :
 - Create new folder named "players"
@@ -94,3 +97,4 @@ https://bit.ly/guckproject
 - Fixed Growmoji bug
 - Added a few things in store
 - Added a few things new in store
+- Real Growtopia Epoch Dialog
