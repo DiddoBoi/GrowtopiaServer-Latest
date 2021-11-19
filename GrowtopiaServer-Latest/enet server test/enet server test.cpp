@@ -113,7 +113,7 @@ ulong _byteswap_ulong(ulong x)
 
 //configs
 int configPort = 17091;
-string configCDN = "0098/20737/cache//"; 
+string configCDN = "0098/78237/cache/"; 
 
 
 /***bcrypt***/
@@ -601,6 +601,8 @@ struct PlayerInfo {
 	string lastgmname = "";
 	string lastgmworld = "";
 	string guildlast = "";
+	vector<string>worldsowned;
+	vector<string>createworldsowned;
 	bool DailyMaths = false;
 	bool isinvited = false;
 	int guildBg = 0;
@@ -867,7 +869,7 @@ public:
 	static string getProperName(string name);
 	static string fixColors(string text);
 	static int playerLogin(ENetPeer* peer, string username, string password);
-	static int playerRegister(string username, string password, string passwordverify, string email, string discord);
+	static int playerRegister(ENetPeer* peer, string username, string password, string passwordverify, string email, string discord);
 	static void showWrong(ENetPeer* peer, string itemFind, string listFull);
 	static void OnTextOverlay(ENetPeer* peer, string text);
 	static void OnSetCurrentWeather(ENetPeer* peer, int weather);
@@ -1093,7 +1095,7 @@ int PlayerDB::guildRegister(ENetPeer* peer, string guildName, string guildStatem
 	return 1;
 }
 
-int PlayerDB::playerRegister(string username, string password, string passwordverify, string email, string discord) {
+int PlayerDB::playerRegister(ENetPeer* peer, string username, string password, string passwordverify, string email, string discord) {
 	string name = username;
 	if (name == "CON" || name == "PRN" || name == "AUX" || name == "NUL" || name == "COM1" || name == "COM2" || name == "COM3" || name == "COM4" || name == "COM5" || name == "COM6" || name == "COM7" || name == "COM8" || name == "COM9" || name == "LPT1" || name == "LPT2" || name == "LPT3" || name == "LPT4" || name == "LPT5" || name == "LPT6" || name == "LPT7" || name == "LPT8" || name == "LPT9") return -1;
 	username = PlayerDB::getProperName(username);
@@ -1132,6 +1134,9 @@ int PlayerDB::playerRegister(string username, string password, string passwordve
 	j["guild"] = "";
 	j["joinguild"] = false;
 	j["premwl"] = 0;
+	j["effect"] = 8421376;
+	j["skinColor"] = 0x8295C3FF;
+	j["worldsowned"] = ((PlayerInfo*)(peer->data))->createworldsowned;
 	o << j << std::endl;
 
 	std::ofstream oo("inventory/" + username + ".json");
@@ -1571,16 +1576,6 @@ bool CheckItemMaxed(ENetPeer* peer, int fItemId, int fQuantityAdd) {
 	}
 	return isMaxed;
 }
-bool CheckItemExists(ENetPeer* peer, const int fItemId) {
-	auto isExists = false;
-	for (auto i = 0; i < ((PlayerInfo*)(peer->data))->inventory.items.size(); i++) {
-		if (((PlayerInfo*)(peer->data))->inventory.items.at(i).itemID == fItemId) {
-			isExists = true;
-			break;
-		}
-	}
-	return isExists;
-}
 void saveAllWorlds() // atexit hack plz fix
 {
 	GamePacket p0 = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"),
@@ -1595,13 +1590,63 @@ void saveAllWorlds() // atexit hack plz fix
 	Sleep(1000);
 
 	Sleep(200);
-	GamePacket p = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"), "`4Global system message`o: `2Saved `oall worlds``"));
+	GamePacket p = packetEnd(appendString(appendString(createPacket(), "OnConsoleMessage"), "`5 `4Global system message`o: `2Saved `oall worlds``"));
 	ENetPacket* packet = enet_packet_create(p.data,
 		p.len,
 		ENET_PACKET_FLAG_RELIABLE);
 	enet_host_broadcast(server, 0, packet);
 	delete p0.data;
 	delete p.data;
+}
+void autosave()
+{
+	bool exist = std::experimental::filesystem::exists("save.txt");
+	if (!exist)
+	{
+		ofstream save("save.txt");
+		save << 0;
+		save.close();
+	}
+	std::ifstream ok("save.txt");
+	std::string limits((std::istreambuf_iterator<char>(ok)),
+		(std::istreambuf_iterator<char>()));
+	int a = atoi(limits.c_str());
+	if (a == 0)
+	{
+		ofstream ok;
+		ok.open("save.txt");
+		ok << 50;
+		ok.close();
+		worldDB.saveAll();
+		cout << "[!]Auto Saving Worlds" << endl;
+	}
+	else
+	{
+		int aa = a - 1;
+		ofstream ss;
+		ss.open("save.txt");
+		ss << aa;
+		ss.close();
+		if (aa == 0)
+		{
+			ofstream ok;
+			ok.open("save.txt");
+			ok << 50;
+			ok.close();
+			worldDB.saveAll();
+			cout << "[!]Auto Saving Worlds" << endl;
+		}
+	}
+}
+bool CheckItemExists(ENetPeer* peer, const int fItemId) {
+	auto isExists = false;
+	for (auto i = 0; i < ((PlayerInfo*)(peer->data))->inventory.items.size(); i++) {
+		if (((PlayerInfo*)(peer->data))->inventory.items.at(i).itemID == fItemId) {
+			isExists = true;
+			break;
+		}
+	}
+	return isExists;
 }
 
 WorldInfo* getPlyersWorld(ENetPeer* peer)
@@ -1653,7 +1698,7 @@ enum BlockTypes {
 	DOOR,
 	CLOTHING,
 	FIST,
-	CONSUMMABLE,
+	CONSUMABLE,
 	CHECKPOINT,
 	GATEWAY,
 	LOCK,
@@ -2060,7 +2105,7 @@ void buildItemsDatabase()
 			tile.blockType = BlockTypes::GEM;
 			break;
 		case 8:
-			tile.blockType = BlockTypes::CONSUMMABLE;
+			tile.blockType = BlockTypes::CONSUMABLE;
 			break;
 		case 9:
 			tile.blockType = BlockTypes::GATEWAY;
@@ -2993,28 +3038,63 @@ void SendPacketRaw(int a1, void *packetData, size_t packetDataSize, void *a4, EN
 		}
 	}
 
-	void sendClothes(ENetPeer* peer)
-	{
-		ENetPeer * currentPeer;
-		gamepacket_t p(0, ((PlayerInfo*)(peer->data))->netID);
-		p.Insert("OnSetClothing");
-		p.Insert(((PlayerInfo*)(peer->data))->cloth_hair, ((PlayerInfo*)(peer->data))->cloth_shirt, ((PlayerInfo*)(peer->data))->cloth_pants);
-		p.Insert(((PlayerInfo*)(peer->data))->cloth_feet, ((PlayerInfo*)(peer->data))->cloth_face, ((PlayerInfo*)(peer->data))->cloth_hand);
-		p.Insert(((PlayerInfo*)(peer->data))->cloth_back, ((PlayerInfo*)(peer->data))->cloth_mask, ((PlayerInfo*)(peer->data))->cloth_necklace);
-		p.Insert(((PlayerInfo*)(peer->data))->skinColor);
-		p.Insert(((PlayerInfo*)(peer->data))->cloth_ances, 0.0f, 0.0f);
-		for (currentPeer = server->peers;
-			currentPeer < &server->peers[server->peerCount];
-			++currentPeer)
-		{
-			if (currentPeer->state != ENET_PEER_STATE_CONNECTED)
-				continue;
-			if (isHere(peer, currentPeer))
-			{
-				p.CreatePacket(currentPeer);
+	void sendClothes(ENetPeer* peer) {
+		GamePacket p3 = packetEnd(appendFloat(appendIntx(appendFloat(appendFloat(appendFloat(appendString(createPacket(), "OnSetClothing"), ((PlayerInfo*)(peer->data))->cloth_hair, ((PlayerInfo*)(peer->data))->cloth_shirt, ((PlayerInfo*)(peer->data))->cloth_pants), ((PlayerInfo*)(peer->data))->cloth_feet, ((PlayerInfo*)(peer->data))->cloth_face, ((PlayerInfo*)(peer->data))->cloth_hand), ((PlayerInfo*)(peer->data))->cloth_back, ((PlayerInfo*)(peer->data))->cloth_mask, ((PlayerInfo*)(peer->data))->cloth_necklace), ((PlayerInfo*)(peer->data))->skinColor), ((PlayerInfo*)(peer->data))->cloth_ances, 0.0f, 0.0f));
+		for (ENetPeer* currentPeer = server->peers; currentPeer < &server->peers[server->peerCount]; ++currentPeer) {
+			if (currentPeer->state != ENET_PEER_STATE_CONNECTED) continue;
+			if (isHere(peer, currentPeer)) {
+				string text = "action|play_sfx\nfile|audio/change_clothes.wav\ndelayMS|0\n";
+				BYTE* data = new BYTE[5 + text.length()];
+				BYTE zero = 0;
+				int type = 3;
+				memcpy(data, &type, 4);
+				memcpy(data + 4, text.c_str(), text.length());
+				memcpy(data + 4 + text.length(), &zero, 1);
+				ENetPacket* packet2 = enet_packet_create(data,
+					5 + text.length(),
+					ENET_PACKET_FLAG_RELIABLE);
+				enet_peer_send(currentPeer, 0, packet2);
+				delete[] data;
+				memcpy(p3.data + 8, &(((PlayerInfo*)(peer->data))->netID), 4); // ffloor
+				ENetPacket* packet3 = enet_packet_create(p3.data,
+					p3.len,
+					ENET_PACKET_FLAG_RELIABLE);
+				enet_peer_send(currentPeer, 0, packet3);
 			}
-
 		}
+		ifstream fg("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json");
+		json j;
+		fg >> j;
+		fg.close();
+		PlayerInfo* p = ((PlayerInfo*)(peer->data));
+		string username = PlayerDB::getProperName(p->rawName);
+		int wls = p->premwl;
+		int clothback = p->cloth_back;
+		int clothhand = p->cloth_hand;
+		int clothface = p->cloth_face;
+		int clothhair = p->cloth_hair;
+		int clothfeet = p->cloth_feet;
+		int clothpants = p->cloth_pants;
+		int clothneck = p->cloth_necklace;
+		int clothshirt = p->cloth_shirt;
+		int clothmask = p->cloth_mask;
+		int clothances = p->cloth_ances;
+		j["ClothBack"] = clothback;
+		j["ClothHand"] = clothhand;
+		j["ClothFace"] = clothface;
+		j["ClothShirt"] = clothshirt;
+		j["ClothPants"] = clothpants;
+		j["ClothNeck"] = clothneck;
+		j["ClothHair"] = clothhair;
+		j["ClothFeet"] = clothfeet;
+		j["ClothMask"] = clothmask;
+		j["ClothAnces"] = clothances;
+		j["effect"] = p->peffect;
+		j["premwl"] = p->premwl;
+		j["worldsowned"] = ((PlayerInfo*)(peer->data))->worldsowned;
+		ofstream fs("players/" + ((PlayerInfo*)(peer->data))->rawName + ".json");
+		fs << j;
+		fs.close();
 	}
 	void sendEmoji(ENetPeer* peer, string emoji)
 	{
@@ -3634,30 +3714,99 @@ void loadnews() {
 	}
 }
 
-	void sendTileUpdate(int x, int y, int tile, int causedBy, ENetPeer* peer)
-	{
-		if (tile > itemDefs.size()) {
-			return;
+void sendTileUpdate(int x, int y, int tile, int causedBy, ENetPeer* peer)
+{
+	if (tile > itemDefs.size()) {
+		return;
+	}
+	bool isLock = false;
+	PlayerMoving data;
+	//data.packetType = 0x14;
+	data.packetType = 0x3;
+
+	//data.characterState = 0x924; // animation
+	data.characterState = 0x0; // animation
+	data.x = x;
+	data.y = y;
+	data.punchX = x;
+	data.punchY = y;
+	data.XSpeed = 0;
+	data.YSpeed = 0;
+	data.netID = causedBy;
+	data.plantingTree = tile;
+
+	WorldInfo* world = getPlyersWorld(peer);
+
+	if (getItemDef(tile).blockType == BlockTypes::CONSUMABLE) {
+		if (tile == 11398) {
+			for (ENetPeer* currentPeer = server->peers; currentPeer < &server->peers[server->peerCount]; ++currentPeer) {
+				if (currentPeer->state != ENET_PEER_STATE_CONNECTED || currentPeer->data == NULL) continue;
+				if (isHere(peer, currentPeer)) {
+					if (x == ((PlayerInfo*)(peer->data))->x / 32 && y == ((PlayerInfo*)(peer->data))->y / 32) {
+						RemoveInventoryItem(11398, 1, peer);
+						vector<int> alien_pod{ 10990, 11000, 11410, 11426, 10952, 10956, 10954, 10958, 10960, 10996, 11408, 11412, 11414, 10998, 11422, 10994 };
+						int rand_item = alien_pod[rand() % alien_pod.size()];
+						int count = 1;
+						if (rand_item == 10990) count = 1;
+						if (rand_item == 11000) count = 1;
+						if (rand_item == 11410) count = 1;
+						if (rand_item == 11426) count = 1;
+						if (rand_item == 10952) count = 1;
+						if (rand_item == 10956) count = 1;
+						if (rand_item == 10954) count = 1;
+						if (rand_item == 10958) count = 1;
+						if (rand_item == 10960) count = 1;
+						if (rand_item == 10958) count = 1;
+						if (rand_item == 10996) count = 1;
+						if (rand_item == 11408) count = 1;
+						if (rand_item == 11412) count = 1;
+						if (rand_item == 11414) count = 1;
+						if (rand_item == 10998) count = 1;
+						if (rand_item == 11422) count = 1;
+						if (rand_item == 10994) count = 1;
+						if (rand_item == 10960 || rand_item == 10956 || rand_item == 10958 || rand_item == 10954) {
+							int target = 5;
+							if (tile == 9286) target = 10;
+							if ((rand() % 1000) <= target) {}
+							else rand_item = 11422;
+						}
+						packet::SendTalkSelf(peer, "You received `2" + to_string(count) + " " + getItemDef(rand_item).name + "`` from the Alien Landing Pod.");
+						packet::consolemessage(peer, "You received `2" + to_string(count) + " " + getItemDef(rand_item).name + "`` from the Alien Landing Pod.");
+						bool success = true;
+						SaveShopsItemMoreTimes(rand_item, count, peer, success);
+						return;
+					}
+					else if (x == ((PlayerInfo*)(currentPeer->data))->x / 32 && y == ((PlayerInfo*)(currentPeer->data))->y / 32) {
+						packet::SendTalkSelf(peer, "You can only use that on yourself.");
+						return;
+					}
+					else {
+						packet::SendTalkSelf(peer, "Must be used on a person.");
+						return;
+					}
+				}
+			}
+			if (tile == 10456) {
+				if (x == ((PlayerInfo*)(peer->data))->x / 32 && y == ((PlayerInfo*)(peer->data))->y / 32) {
+					if (((PlayerInfo*)(peer->data))->cloth_back != 10456) {
+						((PlayerInfo*)(peer->data))->cloth_back = 10456;
+						((PlayerInfo*)(peer->data))->peffect = 8421559;
+						sendPuncheffectpeer(peer, ((PlayerInfo*)(peer->data))->peffect);
+						sendClothes(peer);
+					}
+					else {
+						((PlayerInfo*)(peer->data))->cloth_back = 10426;
+						((PlayerInfo*)(peer->data))->peffect = 8421559;
+						sendPuncheffectpeer(peer, ((PlayerInfo*)(peer->data))->peffect);
+						sendClothes(peer);
+					}
+				}
+				else {
+					packet::SendTalkSelf(peer, "Must be used on a person.");
+				}
+			}
 		}
-		bool isLock = false;
-		PlayerMoving data;
-		//data.packetType = 0x14;
-		data.packetType = 0x3;
-
-		//data.characterState = 0x924; // animation
-		data.characterState = 0x0; // animation
-		data.x = x;
-		data.y = y;
-		data.punchX = x;
-		data.punchY = y;
-		data.XSpeed = 0;
-		data.YSpeed = 0;
-		data.netID = causedBy;
-		data.plantingTree = tile;
-		
-		WorldInfo *world = getPlyersWorld(peer);
-
-		if (getItemDef(tile).blockType == BlockTypes::CONSUMMABLE) return;
+	}
 
 		if (world == NULL) return;
 		if (x<0 || y<0 || x>world->width - 1 || y>world->height - 1||tile > itemDefs.size()) return; // needs - 1
@@ -4372,46 +4521,6 @@ void loadnews() {
 				SendPacketRaw(4, packPlayerMoving(&data), 56, 0, currentPeer, ENET_PACKET_FLAG_RELIABLE);
 			
 			//cout << "Tile update at: " << data2->punchX << "x" << data2->punchY << endl;
-		}
-	}
-	void autosave()
-	{
-		bool exist = std::experimental::filesystem::exists("save.txt");
-		if (!exist)
-		{
-			ofstream save("save.txt");
-			save << 0;
-			save.close();
-		}
-		std::ifstream ok("save.txt");
-		std::string limits((std::istreambuf_iterator<char>(ok)),
-			(std::istreambuf_iterator<char>()));
-		int a = atoi(limits.c_str());
-		if (a == 0)
-		{
-			ofstream ok;
-			ok.open("save.txt");
-			ok << 50;
-			ok.close();
-			worldDB.saveAll();
-			cout << "[!]Auto Saving Worlds" << endl;
-		}
-		else
-		{
-			int aa = a - 1;
-			ofstream ss;
-			ss.open("save.txt");
-			ss << aa;
-			ss.close();
-			if (aa == 0)
-			{
-				ofstream ok;
-				ok.open("save.txt");
-				ok << 50;
-				ok.close();
-				worldDB.saveAll();
-				cout << "[!]Auto Saving Worlds" << endl;
-			}
 		}
 	}
 
@@ -5167,18 +5276,15 @@ label|Download Latest Version
 							continue;
 
 						if (isHere(peer, currentPeer)) {
-							if (((PlayerInfo*)(currentPeer->data))->netID == id) {
-								int levels = static_cast<PlayerInfo*>(peer->data)->level;
-								int xp = static_cast<PlayerInfo*>(peer->data)->xp;
-								string name = ((PlayerInfo*)(peer->data))->displayName;
-								packet::dialog(peer, "set_default_color|`o\n\nadd_player_info|" + name + " | " + std::to_string(levels) + " | " + std::to_string(xp) + " | " + to_string(static_cast<PlayerInfo*>(peer->data)->level * 1500) + "|\nadd_spacer|small|\nadd_button|\nadd_spacer|small|\nadd_button|growmojis|`$Growmojis|\nadd_spacer|small|\nadd_button|gpasslabel|`9Royal GrowPass||\nadd_spacer|small|\nadd_button|ingamerole|`6Purchase Rank||\nadd_spacer|small|\nadd_button|chc0|Close|noflags|0|0|\n\nadd_quick_exit|\nnend_dialog|gazette||OK|");
-							}
-							else {
-								string name = ((PlayerInfo*)(currentPeer->data))->displayName;
-								string ugay = "set_default_color|`o\nadd_label_with_icon|big|`w" + name + " `w(`2" + to_string(((PlayerInfo*)(currentPeer->data))->level) + "`w)``|left|18|\nadd_spacer|small|\n\nadd_quick_exit|\nend_dialog|player_info||Close|";
-								packet::dialog(peer, ugay);
-							}
+							int levels = ((PlayerInfo*)(peer->data))->level;
+							int xp = ((PlayerInfo*)(peer->data))->xp;
+							string name = ((PlayerInfo*)(peer->data))->displayName;
+							string verygae = "set_default_color|`o\n\nadd_player_info|" + name + " | " + std::to_string(levels) + " | " + std::to_string(xp) + " | " + to_string(levels * 1500) + "|\nadd_spacer|small|\nadd_button|\nadd_spacer|small|\nadd_button|growmojis|`$Growmojis|\nadd_spacer|small|\nadd_button|gpasslabel|`9Royal GrowPass||\nadd_spacer|small|\nadd_button|ingamerole|`6Purchase Rank||\nadd_spacer|small|\nadd_button|chc0|Close|noflags|0|0|\n\nadd_quick_exit|\nnend_dialog|gazette||OK|";
+							packet::dialog(peer, verygae);
 						}
+						string name = ((PlayerInfo*)(peer->data))->displayName;
+						string ugay = "set_default_color|`o\nadd_label_with_icon|big|`w" + name + " `w(`2" + to_string(((PlayerInfo*)(currentPeer->data))->level) + "`w)``|left|18|\nadd_spacer|small|\n\nadd_quick_exit|\nend_dialog|player_info||Close|";
+						packet::dialog(peer, ugay);
 					}
 				}
 
@@ -6939,7 +7045,7 @@ label|Download Latest Version
 						}
 						if (id == 10456 || id == 7480 || id == 112 || id == 1790 || id == 1900 || id == 6336) {
 							if (((PlayerInfo*)(peer->data))->adminLevel < 1337) {
-								packet::consolemessage(peer, "This item is to heavy for you!");
+								packet::consolemessage(peer, "This item is too heavy for you!");
 								break;
 							}
 							else {
@@ -7861,7 +7967,7 @@ label|Download Latest Version
 #ifdef REGISTRATION
 					if (isRegisterDialog) {
 
-						int regState = PlayerDB::playerRegister(username, password, passwordverify, email, discord);
+						int regState = PlayerDB::playerRegister(peer, username, password, passwordverify, email, discord);
 						if (regState == 1) {
 							packet::consolemessage(peer, "`rYour account has been created!``");
 							gamepacket_t p;
@@ -7944,6 +8050,11 @@ label|Download Latest Version
 						data.netID = ((PlayerInfo*)(peer->data))->netID;
 						data.plantingTree = atoi(str.substr(7, cch.length() - 7 - 1).c_str());
 						SendPacketRaw(4, packPlayerMoving(&data), 56, 0, peer, ENET_PACKET_FLAG_RELIABLE);
+					}
+					else if (str == "/save")
+					{
+						if (adminlevel(((PlayerInfo*)(peer->data))->rawName) < 333) break;
+						saveAllWorlds();
 					}
 					else if (str == "/howgay") {
 						ENetPeer* currentPeer;
@@ -8847,6 +8958,8 @@ label|Download Latest Version
 							int mask;
 							int ances;
 							int face;
+							int effect;
+							int skin;
 							adminLevel = j["adminLevel"];
 							level = j["level"];
 							xp = j["xp"];
@@ -8861,6 +8974,8 @@ label|Download Latest Version
 							feet = j["ClothFeet"];
 							mask = j["ClothMask"];
 							ances = j["ClothAnces"];
+							effect = j["effect"];
+							skin = j["skinColor"];
 
 							p->adminLevel = adminLevel;
 							p->level = level;
@@ -8876,6 +8991,8 @@ label|Download Latest Version
 							p->cloth_shirt = shirt;
 							p->cloth_mask = mask;
 							p->cloth_ances = ances;
+							p->peffect = effect;
+							p->skinColor = skin;
 
 							updateAllClothes(peer);
 
