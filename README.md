@@ -4,7 +4,7 @@
 - Fixed Registration issue
 - Re-designed /find command UI
 
-Credit : GrowtopiaNoobs, Tianvan, GuckTubeYT, LyteVV, GTRA Owner, Restart, and Ipadtopia
+Credit : GrowtopiaNoobs, Tianvan, GuckTubeYT, GTRA Owner, Restart, and Ipadtopia
 
 Additional Note :
 - This source doesn't require coredata.txt
@@ -98,3 +98,6 @@ https://bit.ly/guckproject
 - Added a few things in store
 - Added a few things new in store
 - Real Growtopia Epoch Dialog
+- Updated to 3.75
+- Alien Landing Pods Gacha
+- Fixing Consumable bug later
