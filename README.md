@@ -101,3 +101,4 @@ https://bit.ly/guckproject
 - Updated to 3.75
 - Alien Landing Pods Gacha
 - Fixing Consumable bug later
+- Clothes are saved.
