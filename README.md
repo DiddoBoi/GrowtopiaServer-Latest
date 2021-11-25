@@ -99,8 +99,9 @@ https://bit.ly/guckproject
 - Alien Landing Pods Gacha
 - Fixing Consumable bug later
 - Clothes are saved.
-- Worlds are saved every 5 minutes.
+- Worlds are auto saved every 5 minutes.
 - Sign Work
 - Entrances and Guild Entrance (BETA)
 - All weather machines (except Heatwave) (Including Epoch, stuff, and background)
 - action|wrench bug fixed, but the button not work yet.
+- Guilds are saved.
