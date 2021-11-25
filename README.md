@@ -24,17 +24,14 @@ You can fix 404 error with these ways :
 - The items.dat or cdncontent that you are using right now is higher than your current gt version.
 
 Fixing Crashed Enet issue :
-- Missing Folder (you can fix it by adding the folder)
-
-Fixing Full Inventory when claim GrowPass :
-- /find and then get any item
+- Missing Folders (you can fix it by adding the folder)
 
 Lazy/don't know how to build? You can use this :
 https://github.com/Ibord1967/GrowtopiaServer-Latest-EXECUTABLE
 
 Fixing Down After Register :
 You can fix that issue with this way :
-- Create new folder named "players"
+- Create new folder named "players", "inventory", "gemdb"
 
 For latest items.dat you can get from gt folder or guckproject.
 For latest cdncontent and onsupermain proto, you can get it by using proxy and login to real gt or join guckproject server to get it.
