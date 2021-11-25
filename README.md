@@ -84,7 +84,7 @@ https://bit.ly/guckproject
 - Math Events (Not Sure)
 - Captcha (Not Sure)
 - /give
-- Rgt Full Design (Except playeritem section)
+- Rgt Store Full Design (Except playeritem section)
 - Working IOTM purchasement on store
 - Added Effect to Mystic Bow and Ouroboros Charm
 - Deleted Auto inventory
